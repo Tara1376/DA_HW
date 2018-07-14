@@ -1,0 +1,615 @@
+---
+title: "report 10"
+author: "Tara Boroushaki 93105501"
+date: "7/12/2018"
+output: html_document
+---
+
+## Libraries
+```{r,warning=F,message=F}
+library(readr)
+library(dplyr)
+library(highcharter)
+library(ggplot2)
+library(ngram)
+library(tidyr)
+setwd("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_10/hw_10/")
+```
+***
+
+
+# 1.
+Ten poorest countries are found by their GDP per capita (current US$)". The percentages of poor people are found by "Poverty headcount ratio at 3.20 a day (2011 PPP) (% of population)". 
+
+```{r,warning=F,message=F}
+
+WDICountry_Series=read_csv("./WDI_csv/WDICountry-Series.csv")
+WDICountry=read_csv("./WDI_csv/WDICountry.csv")
+WDIData=read_csv("./WDI_csv/WDIData.csv")
+WDIFootNote=read_csv("./WDI_csv/WDIFootNote.csv")
+WDISeries_Time=read_csv("./WDI_csv/WDISeries-Time.csv")
+WDISeries=read_csv("./WDI_csv/WDISeries.csv")
+
+
+WDIData$`Indicator Name`%>%unique()%>%as.data.frame()->a
+
+WDIData%>%filter(`Indicator Name`=="GDP per capita (current US$)" |
+                   `Indicator Name`=="Poverty headcount ratio at $3.20 a day (2011 PPP) (% of population)" |
+                   `Indicator Name`=="Poverty headcount ratio at $3.20 a day (2011 PPP) (% of population)") %>%
+  select(`Country Name`,`Country Code`,`2011`,`Indicator Name`) -> WDIData_q1
+
+
+
+WDIData_q1%>%filter(`Indicator Name`=="GDP per capita (current US$)")%>%arrange(`2011`)%>%head(n=10L)
+
+WDIData_q1%>%filter(`Indicator Name`=="GDP per capita (current US$)")%>%arrange(`2011`)%>%
+  select(`Country Name`)%>% .[1:10,] ->poorCOUNTRYcode
+
+WDIData%>%filter(`Country Name` %in% poorCOUNTRYcode$`Country Name`)%>%
+  filter(`Indicator Name`=="Poverty headcount ratio at national poverty lines (% of population)")%>%
+  select(`Country Name`,`2008`,`2010`,`2011`,`2012`,`2014`)->Q1_poverty
+
+MEAN=c(Q1_poverty[1,6],Q1_poverty[2,2],Q1_poverty[3,5],Q1_poverty[4,3],
+       Q1_poverty[5,3],Q1_poverty[6,6],Q1_poverty[7,5],Q1_poverty[8,3],
+       Q1_poverty[9,4],Q1_poverty[10,4])
+Q1_poverty$value=as.numeric(MEAN)
+Q1_poverty=Q1_poverty%>%select(`Country Name`,value)%>%mutate(type="poor percent")
+
+WDIData%>%filter(`Country Name` %in% poorCOUNTRYcode$`Country Name`)%>%
+  filter(`Indicator Name`=="Life expectancy at birth, total (years)")%>%
+  select(`Country Name`,value=`2011`)%>%mutate(type="life_expectancy")->Q1_life
+
+
+WDIData%>%filter(`Country Name` %in% poorCOUNTRYcode$`Country Name`)%>%
+  filter(`Indicator Name`=="Adjusted net national income per capita (current US$)")%>%
+  select(`Country Name`,value=`2011`)%>%mutate(type="AVGincome")->Q1_income
+
+rbind(Q1_income,Q1_life,Q1_poverty)->q1
+
+
+
+p1=ggplot(q1,aes(x=`Country Name`,y=value))+geom_bar(aes(fill = type),stat = "identity",position = "dodge",linetype = "dashed",color = "red",alpha=0.5)+
+  xlab("country name")+ylab("value")+ggtitle("Q1")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p1
+
+```
+***
+
+# 2.
+The Rwandan genocide, also known as the genocide against the Tutsi, was a genocidal mass slaughter of Tutsi in Rwanda by members of the Hutu majority government. An estimated 500,000 to 1,000,000 Rwandans were killed during the 100-day period from 7 April to mid-July 1994,constituting as many as 70% of the Tutsi population.
+(from wikipedia)
+
+```{r,warning=F,message=F}
+WDIData%>%filter(`Indicator Name`=="Life expectancy at birth, total (years)")->q2_life
+q2_life=q2_life[,-c(1,3,4)]
+q2_life=q2_life[,c(1,33:47)]%>%na.omit()
+
+q2_life%>%filter(`Country Code`=="RWA")->RWA
+
+RWA[,-1]%>%as.numeric()->RWA_pop
+year=as.character(c(1991:2005))
+data.frame(pop=RWA_pop,year=as.character(year))->RWA_data
+
+rbind(q2_life%>%select(pop=`1991`)%>%mutate(year="1991"),
+    q2_life%>%select(pop=`1992`)%>%mutate(year="1992"),
+    q2_life%>%select(pop=`1993`)%>%mutate(year="1993"),
+    q2_life%>%select(pop=`1994`)%>%mutate(year="1994"),
+    q2_life%>%select(pop=`1995`)%>%mutate(year="1995"),
+    q2_life%>%select(pop=`1996`)%>%mutate(year="1996"),
+    q2_life%>%select(pop=`1997`)%>%mutate(year="1997"),
+    q2_life%>%select(pop=`1998`)%>%mutate(year="1998"),
+    q2_life%>%select(pop=`1999`)%>%mutate(year="1999"),
+    q2_life%>%select(pop=`2000`)%>%mutate(year="2000"),
+    q2_life%>%select(pop=`2001`)%>%mutate(year="2001"),
+    q2_life%>%select(pop=`2002`)%>%mutate(year="2002"),
+    q2_life%>%select(pop=`2003`)%>%mutate(year="2003"),
+    q2_life%>%select(pop=`2004`)%>%mutate(year="2004"),
+    q2_life%>%select(pop=`2005`)%>%mutate(year="2005"))->q2_life_box
+
+hcboxplot(x = q2_life_box$pop, var = q2_life_box$year,outliers=F)%>%
+  hc_add_series(RWA_data, "spline", hcaes(y = pop,x=year), name = "Rwanda")%>%
+  hc_title(text="Rwanda Vs other countries")
+  
+```
+
+***
+
+# 3.
+When countries are sorted by their life expectancy in 2011, their health expenditure per capita has a decreasing trend. The higher the health expenditure per capita, the higher is their life expectancy.
+
+```{r,warning=F,message=F}
+# Q3
+
+WDIData%>%filter(`Indicator Name`=="Life expectancy at birth, total (years)")%>%
+  select(`Country Name`,valueL=`2011`)->Q3_life
+
+WDIData%>%filter(`Indicator Name`=="Current health expenditure per capita (current US$)")%>%
+  select(`Country Name`,valueH=`2011`)->Q3_health
+Q3_health$valueH=Q3_health$valueH/100
+
+full_join(Q3_life,Q3_health,by="Country Name")%>%na.omit()%>%
+  arrange(-valueL)%>%mutate(num=row_number())->Q3
+
+rbind(Q3%>%select(num,value=valueH)%>%mutate(type="health expenditure in 100$"),
+      Q3%>%select(num,value=valueL)%>%mutate(type="Life expectancy"))->Q3_plot
+
+
+p3=ggplot(Q3_plot,aes(x=num,y=value))+geom_smooth(aes(color =type))+
+  xlab("country")+ylab("value")+ggtitle("Q3")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p3
+
+```
+***
+
+# 4.
+Roughly speaking, there has been an increasing trend in the last 50 years. However in the last 10 years it has generally decreased.
+
+```{r,warning=F,message=F}
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep.")%>%
+  filter(`Indicator Name`=="Household final consumption expenditure per capita (constant 2010 US$)")->ir_h
+
+ir_h=ir_h[,-c(1:4)]
+
+data.frame(power=as.numeric(ir_h[-c(58,59)]),year=c(1960:2016))->q4
+
+p4=ggplot(q4,aes(x=year,y=power))+geom_line()+
+  xlab("year")+ylab("Household final consumption expenditure per capita")+ggtitle("Q4")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p4
+```
+
+# 5.
+
+```{r,warning=F,message=F}
+
+a[sort(c(624,328,1546,1551,195,684,522,515,1060,573,677,71,517,511,69,616, 691 ,935)),]->index
+
+as.data.frame(index)->index
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep." )%>%
+  filter(`Indicator Name`%in%index$index)%>%arrange(`Indicator Name`)->iran
+
+WDIData%>%filter(`Country Name`=="World")%>%
+  filter(`Indicator Name`%in%index$index)%>%arrange(`Indicator Name`)->WLD
+
+
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep." | `Country Name`=="World")%>%
+  filter(`Indicator Name`=="GDP per capita (constant 2010 US$)")->GDP
+
+iran_GDP=data.frame(data=as.numeric(GDP[2,5:62]),year=1960:2017)
+iran_GDP$data=iran_GDP$data/1000
+WLD_GDP=data.frame(data=as.numeric(GDP[1,5:62]),year=1960:2017)
+WLD_GDP$data=WLD_GDP$data/1000
+
+lst1 = list()
+
+for (i in 1:18) {
+  
+  data.frame(value=as.numeric(iran[i,5:62]),year=1960:2017)->x
+  data.frame(value=as.numeric(WLD[i,5:62]),year=1960:2017)->x1
+  hchart(x,"line", hcaes(y = value, x = year),name= concatenate("IRR ",as.character(iran[i,3])))%>%
+    hc_add_series(x1, "spline", hcaes(y = value, x = year), name = concatenate("WLD ",as.character(iran[i,3])))%>%
+    hc_title(text =as.character(iran[i,3]))%>%
+    hc_add_theme(hc_theme_sandsignika())->hc1
+  lst1[[i]] <- hc1
+}
+
+hchart(iran_GDP, "spline", hcaes(y = data, x = year), name = "IRR GDP per capita in 1000$")%>%
+  hc_add_series(WLD_GDP, "spline", hcaes(y = data, x = year), name = "WLD GDP per capita in 1000$")%>%
+  hc_title(text ="GDP")%>%
+  hc_add_theme(hc_theme_sandsignika())->hc1
+
+lst1[[19]] <- hc1
+  
+htmltools::tagList(lst1)
+  
+```
+
+
+# 6.
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+
+
+WDIData%>%filter(`Indicator Name`%in%index$index)%>%arrange(`Country Code`,`Indicator Name`)%>%
+  select(code=`Country Code`,data=`2005`,`Indicator Name`)%>%group_by(code)%>%
+  mutate(indicator=row_number(code))%>%select(code,indicator,data)->q6
+
+codeList=unique(q6$code)
+#264
+q6%>%filter(code==codeList[1])%>%arrange(indicator)->x
+w=t(as.table(x$data))
+for (i in 2:264) {
+  q6%>%filter(code==codeList[i])%>%arrange(indicator)->x
+  w1=t(as.table(x$data))
+  w=rbind(w,w1)
+  
+  }
+
+w=as.data.frame(w)
+Q6_data=cbind(as.data.frame(codeList),w)
+Q6_data[111,"N"]=Q6_data[258,"N"]
+Q6_data%>%drop_na()->Q6_data
+kcl = kmeans(Q6_data[,-1],centers = 3)
+kcl
+plot(Q6_data,col = kcl$cluster,pch = 20,cex = 2)
+
+
+Q6=data.frame(name=Q6_data[,1],cluster=kcl$cluster)
+ir_cls_num=Q6$cluster[which(as.character(Q6$name)=="IRN")]
+Q6%>%filter(cluster==ir_cls_num)->IRN_clus
+WDIData%>%filter(`Country Code`%in% IRN_clus$name)%>%select(`Country Name`)%>%unique()->IRN_clus_names
+
+print(IRN_clus_names)
+
+```
+
+
+
+# 7.
+Most of countries are in one cluster, and only a small portion of them are in other 2. The clustring result is satisfying.
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+# Q7
+
+library(ggbiplot)
+Q7_pca = prcomp(Q6_data[,-1], scale. = TRUE)
+ggbiplot(Q7_pca, obs.scale = 1, var.scale = 1,
+         groups =as.character( kcl$cluster), ellipse = TRUE, circle = F) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+
+PCA = Q7_pca$sdev^2
+
+qcc::pareto.chart(PCA)
+
+```
+***
+
+# 9. 
+Nine comes sooner than eight here!
+
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+
+
+iran[,40:62]->ir_Q8
+ir_Q8=as.data.frame(t(as.matrix(ir_Q8)))
+ir_Q8$growth=iran_GDP[36:58,1]
+
+library(h2o)
+h2o.init()
+
+happly = as.h2o(ir_Q8)
+hglm = h2o.glm(y = "growth", x= c("V1","V2","V3","V4","V5","V6",
+                                  "V7","V8","V9","V10","V11","V12",
+                                  "V13","V14","V15","V16","V17","V18"),
+               training_frame = happly, family="gaussian")
+
+hglm
+
+```
+
+
+
+***
+# 8.
+Most of countries are in one cluster, and only a small portion of them are in other 2. 
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+# Q9
+health=a[sort(c(57,139,51,479,332,646,775,1235,1251,1078,1323,1131)),]
+edu=a[sort(c(572,574,759,1260,1356,1350,1328,1329,1259,1260,1288,1289,598,599)),]
+```
+
+Health related criteria are:
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+health
+```
+
+Education related criteria are:
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+edu
+```
+
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+# health
+
+### 5
+as.data.frame(health)->health
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep." )%>%
+  filter(`Indicator Name`%in%health$health)%>%arrange(`Indicator Name`)->iran
+
+WDIData%>%filter(`Country Name`=="World")%>%
+  filter(`Indicator Name`%in%health$health)%>%arrange(`Indicator Name`)->WLD
+
+
+lst2 = list()
+
+for (i in 1:12) {
+  
+  data.frame(value=as.numeric(iran[i,5:62]),year=1960:2017)->x
+  data.frame(value=as.numeric(WLD[i,5:62]),year=1960:2017)->x1
+  hchart(x,"line", hcaes(y = value, x = year),name= concatenate("IRR ",as.character(iran[i,3])))%>%
+    hc_add_series(x1, "spline", hcaes(y = value, x = year), name = concatenate("WLD ",as.character(iran[i,3])))%>%
+    hc_title(text =as.character(iran[i,3]))%>%
+    hc_add_theme(hc_theme_sandsignika())->hc1
+  lst2[[i]] <- hc1
+}
+
+htmltools::tagList(lst2)
+
+
+### Q6
+
+
+WDIData%>%filter(`Indicator Name`%in% health$health)%>%arrange(`Country Code`,`Indicator Name`)%>%
+  select(code=`Country Code`,data=`2011`,`Indicator Name`)%>%group_by(code)%>%
+  mutate(indicator=row_number(code))%>%select(code,indicator,data)->q6
+
+codeList=unique(q6$code)
+#264
+q6%>%filter(code==codeList[1])%>%arrange(indicator)->x
+w=t(as.table(x$data))
+for (i in 2:264) {
+  q6%>%filter(code==codeList[i])%>%arrange(indicator)->x
+  w1=t(as.table(x$data))
+  w=rbind(w,w1)
+  
+}
+
+w=as.data.frame(w)
+Q6_data=cbind(as.data.frame(codeList),w)%>%na.omit()
+kcl = kmeans(Q6_data[,-1],centers = 3)
+kcl
+plot(Q6_data,col = kcl$cluster,pch = 20,cex = 2)
+
+Q6=data.frame(name=Q6_data[,1],cluster=kcl$cluster)
+ir_cls_num=Q6$cluster[which(as.character(Q6$name)=="IRN")]
+Q6%>%filter(cluster==ir_cls_num)->IRN_clus
+WDIData%>%filter(`Country Code`%in% IRN_clus$name)%>%select(`Country Name`)%>%unique()->IRN_clus_names
+
+print(IRN_clus_names)
+
+### Q7
+Q7_pca = prcomp(Q6_data[,-1], scale. = TRUE)
+ggbiplot(Q7_pca, obs.scale = 1, var.scale = 1,
+         groups =as.character( kcl$cluster), ellipse = TRUE, circle = F) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+
+PCA = Q7_pca$sdev^2
+#names(PCA) = paste0('PC', eigv$PCs)
+qcc::pareto.chart(PCA)
+
+#####################################################################
+```
+
+
+
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+#####################################################################
+
+# EDU
+
+### 5
+as.data.frame(edu)->edu
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep." )%>%
+  filter(`Indicator Name`%in%edu$edu)%>%arrange(`Indicator Name`)->iran
+
+WDIData%>%filter(`Country Name`=="World")%>%
+  filter(`Indicator Name`%in%edu$edu)%>%arrange(`Indicator Name`)->WLD
+
+
+lst3 = list()
+
+for (i in 1:13) {
+  
+  data.frame(value=as.numeric(iran[i,5:62]),year=1960:2017)->x
+  data.frame(value=as.numeric(WLD[i,5:62]),year=1960:2017)->x1
+  hchart(x,"line", hcaes(y = value, x = year),name= concatenate("IRR ",as.character(iran[i,3])))%>%
+    hc_add_series(x1, "spline", hcaes(y = value, x = year), name = concatenate("WLD ",as.character(iran[i,3])))%>%
+    hc_title(text =as.character(iran[i,3]))%>%
+    hc_add_theme(hc_theme_sandsignika())->hc1
+  lst3[[i]] <- hc1
+}
+
+htmltools::tagList(lst3)
+
+
+### Q6
+
+
+WDIData%>%filter(`Indicator Name`%in% edu$edu)%>%arrange(`Country Code`,`Indicator Name`)%>%
+  select(code=`Country Code`,data=`2011`,`Indicator Name`)%>%group_by(code)%>%
+  mutate(indicator=row_number(code))%>%select(code,indicator,data)->q6
+
+codeList=unique(q6$code)
+#264
+q6%>%filter(code==codeList[1])%>%arrange(indicator)->x
+w=t(as.table(x$data))
+for (i in 2:264) {
+  q6%>%filter(code==codeList[i])%>%arrange(indicator)->x
+  w1=t(as.table(x$data))
+  w=rbind(w,w1)
+  
+}
+
+w=as.data.frame(w)
+Q6_data=cbind(as.data.frame(codeList),w)%>%na.omit()
+kcl = kmeans(Q6_data[,-1],centers = 3)
+kcl
+plot(Q6_data,col = kcl$cluster,pch = 20,cex = 2)
+
+Q6=data.frame(name=Q6_data[,1],cluster=kcl$cluster)
+ir_cls_num=Q6$cluster[which(as.character(Q6$name)=="IRN")]
+Q6%>%filter(cluster==ir_cls_num)->IRN_clus
+WDIData%>%filter(`Country Code`%in% IRN_clus$name)%>%select(`Country Name`)%>%unique()->IRN_clus_names
+
+print(IRN_clus_names)
+
+### Q7
+Q7_pca = prcomp(Q6_data[,-1], scale. = TRUE)
+ggbiplot(Q7_pca, obs.scale = 1, var.scale = 1,
+         groups =as.character( kcl$cluster), ellipse = TRUE, circle = F) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+
+PCA = Q7_pca$sdev^2
+#names(PCA) = paste0('PC', eigv$PCs)
+qcc::pareto.chart(PCA)
+
+```
+
+***
+
+# 10.
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+
+
+
+
+as.data.frame(c(as.character(health[,1]),as.character(edu[,1]),as.character(index[,1])))%>%unique()->all
+names(all)="all"
+WDIData%>%filter(`Indicator Name`%in% all$all)%>%arrange(`Country Code`,`Indicator Name`)%>%
+  select(code=`Country Code`,data=`2011`,`Indicator Name`)%>%group_by(code)%>%
+  mutate(indicator=row_number(code))%>%select(code,indicator,data)->q10
+
+codeList=unique(q10$code)
+#264
+q10%>%filter(code==codeList[1])%>%arrange(indicator)->x
+w=t(as.table(x$data))
+for (i in 2:264) {
+  q10%>%filter(code==codeList[i])%>%arrange(indicator)->x
+  w1=t(as.table(x$data))
+  w=rbind(w,w1)
+  
+}
+
+w=as.data.frame(w)
+Q10_data=cbind(as.data.frame(codeList),w)
+Q10_data=Q10_data[,-c(25,28)]
+Q10_data=Q10_data%>%na.omit()
+row.names(Q10_data)=Q10_data$codeList
+Q10_data=Q10_data[,-1]
+dist = stats::dist(Q10_data,method = "euclidean")
+clus = hclust(dist,method = "complete")
+plot(clus)
+rect.hclust(clus, 3)
+
+
+
+
+
+```
+
+
+
+
+# 11.
+
+### a.
+Prevalence of anemia among children has constantly decresed in iran. it was as high as 50% just 30 years ago, and is  currently less than 30%. Switzerland is one of the ,ost developed and wealthiest countries. Its rate is substantially lower. However, since 2010 the Prevalence of anemia has increased by 3% which is realy odd for such a country!
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+#"Prevalence of anemia among children"
+
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep."  )%>%
+  filter(`Indicator Name`==a[1235,])->q11_1_ir
+q11_1_ir=data.frame(data=as.numeric(q11_1_ir[,5:62]),year=1960:2017)
+WDIData%>%filter(`Country Name`=="Switzerland" )%>%
+  filter(`Indicator Name`==a[1235,])->q11_1_ch
+q11_1_ch=data.frame(data=as.numeric(q11_1_ch[,5:62]),year=1960:2017)
+WDIData%>%filter( `Country Name`=="World" )%>%
+  filter(`Indicator Name`==a[1235,])->q11_1_wld
+q11_1_wld=data.frame(data=as.numeric(q11_1_wld[,5:62]),year=1960:2017)
+
+hchart(q11_1_ir,"line", hcaes(y = data, x = year),name="IRR")%>%
+  hc_add_series(q11_1_wld, "spline", hcaes(y = data, x = year), name ="WLD")%>%
+  hc_add_series(q11_1_ch, "spline", hcaes(y = data, x = year), name ="CHF")%>%
+  hc_title(text =a[1235,])%>%
+  hc_add_theme(hc_theme_sandsignika())
+
+
+```
+
+
+
+
+
+### b. 
+The immunization against measles rate for Iran is one of the highest. Sunprisingly, the immunization rate for US and switzerland are lower than Iran! I googled it and found that it is not a compulsory vaccination in those two country. In addition to that, there are some debates whether measles vaccine is related to autism in the next generation. 
+
+"Measles vaccination is an important indicator of hesitancy and refusal, since misinformation accusing it of causing autism, despite evidence of its fraudulent source, is still going on. "
+
+If you google the autism rate, it is 1.9% for Iran and 1.7% for US. Due to the fact that there are probably many austism cases in Iran that have not been counted, I wonder whether such speculation about measles vaccine can be proved true in future!
+
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep."  )%>%
+  filter(`Indicator Name`==a[648,])->q11_2_ir
+q11_2_ir=data.frame(data=as.numeric(q11_2_ir[,5:62]),year=1960:2017)
+WDIData%>%filter(`Country Name`=="Switzerland" )%>%
+  filter(`Indicator Name`==a[648,])->q11_2_ch
+q11_2_ch=data.frame(data=as.numeric(q11_2_ch[,5:62]),year=1960:2017)
+WDIData%>%filter( `Country Name`=="United States" )%>%
+  filter(`Indicator Name`==a[648,])->q11_2_US
+q11_2_US=data.frame(data=as.numeric(q11_2_US[,5:62]),year=1960:2017)
+
+hchart(q11_2_ir,"line", hcaes(y = data, x = year),name="IRR")%>%
+  hc_add_series(q11_2_US, "spline", hcaes(y = data, x = year), name ="US")%>%
+  hc_add_series(q11_2_ch, "spline", hcaes(y = data, x = year), name ="CHF")%>%
+  hc_title(text =a[648,])%>%
+  hc_add_theme(hc_theme_sandsignika())
+```
+
+
+### c.
+Ratio of girls to boys is "gender parity index". Iran's index has the highest growth and is now above 1. US's index has been constantly above 1, but is now a little lower than Iran, I believe such a large growth is a sign of modernization of society in a developing country.
+
+```{r,fig.width=13,fig.height=13,warning=F,message=F}
+WDIData%>%filter(`Country Name`=="Iran, Islamic Rep."  )%>%
+  filter(`Indicator Name`==a[1356,])->q11_3_ir
+q11_3_ir=data.frame(data=as.numeric(q11_3_ir[,5:62]),year=1960:2017)
+WDIData%>%filter(`Country Name`=="Switzerland" )%>%
+  filter(`Indicator Name`==a[1356,])->q11_3_ch
+q11_3_ch=data.frame(data=as.numeric(q11_3_ch[,5:62]),year=1960:2017)
+WDIData%>%filter( `Country Name`=="United States" )%>%
+  filter(`Indicator Name`==a[1356,])->q11_3_US
+q11_3_US=data.frame(data=as.numeric(q11_3_US[,5:62]),year=1960:2017)
+
+hchart(q11_3_ir,"line", hcaes(y = data, x = year),name="IRR")%>%
+  hc_add_series(q11_3_US, "spline", hcaes(y = data, x = year), name ="US")%>%
+  hc_add_series(q11_3_ch, "spline", hcaes(y = data, x = year), name ="CHF")%>%
+  hc_title(text =a[1356,])%>%
+  hc_add_theme(hc_theme_sandsignika())
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

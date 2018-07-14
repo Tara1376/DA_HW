@@ -1,0 +1,357 @@
+---
+title: "report 7"
+author: "Tara Boroushaki 93105501"
+date: "4/26/2018"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r,include=FALSE}
+library(h2o)
+library(readxl)
+library(dplyr)
+library(Hmisc)
+library(gridExtra)
+library(rlist)
+library(ggthemes)
+library(corrplot)
+library(car)
+library(reshape2)
+library(tidytext)
+source("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_7/week_7_14/unbalanced_functions.R")
+
+death = read.csv("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_7/data/murder_suicide.csv")
+options(warn=0 )
+```
+
+
+
+**1.**
+First, we should combine 2 methodes of education evaluation and multiple ways of defining age to one method. I converted 1998 version of education evaluation to 2003 version, and mutated a new column "Education". AgeRecode27 is used for age since we do not need too much details on age of victims. CauseRecode39 was used for death cause, again because too much information can cause problem and too little information is not enough. Correlation matrix and scatter plots are as follows.
+
+
+```{r}
+death$Education=death$Education2003Revision
+version1998=which(death$EducationReportingFlag==0)
+for (i in version1998){
+  if(death$Education1989Revision[i]<9)
+    {death$Education[i]=1}
+  if(death$Education1989Revision[i]>8 && death$Education1989Revision[i]<12)
+    {death$Education[i]=2}
+  if(death$Education1989Revision[i]==12)
+    {death$Education[i]=3}
+  if(death$Education1989Revision[i]==13 || death$Education1989Revision[i]==14)
+    {death$Education[i]=4}
+  if(death$Education1989Revision[i]==15)
+    {death$Education[i]=5}
+  if(death$Education1989Revision[i]==16)
+    {death$Education[i]=6}
+  if(death$Education1989Revision[i]==17)
+    {death$Education[i]=7}
+  if(death$Education1989Revision[i]==99)
+    {death$Education[i]=9}
+}
+death$Education[which(death$Education==8)]=7
+
+death %>% select(ResidentStatus,Age=AgeRecode27,Education,MonthOfDeath,Sex,
+                 PlaceOfDeathAndDecedentsStatus,MaritalStatus,DayOfWeekOfDeath,
+                 InjuryAtWork,MannerOfDeath,ActivityCode,MethodOfDisposition,
+                 PlaceOfInjury,Autopsy,Race,CauseRecode39) ->CleanDeathData
+
+CleanDeathData%>%mutate(Marital_Status=as.numeric(MaritalStatus),Injury_At_Work=as.numeric(InjuryAtWork),
+                        AutopsyNUM=as.numeric(Autopsy),Method_Of_Disposition=as.numeric(MethodOfDisposition)
+                        ,sex=as.numeric(Sex))%>% select(ResidentStatus,Age,Education,MonthOfDeath,sex,
+                                         PlaceOfDeathAndDecedentsStatus,Marital_Status,DayOfWeekOfDeath,
+                                         Injury_At_Work,MannerOfDeath,ActivityCode,Method_Of_Disposition,
+                                         PlaceOfInjury,AutopsyNUM,Race,CauseRecode39)->CleanDeathData
+CleanDeathData$MannerOfDeath=CleanDeathData$MannerOfDeath-2
+corr_ = rcorr(as.matrix(CleanDeathData))
+corr_matrix = corr_[[1]]
+pvalue_matrix = corr_[[3]]
+  #matrix
+melted_cormat <- melt(abs(corr_matrix))
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))+
+  scale_fill_gradientn(colours = c("azure","slateblue1","red"), values = c(0,0.5,1))
+  #scatter plots
+plots = list()
+vars = colnames(CleanDeathData)
+for (i in 2:16){
+  for(j in 1:(i-1)){
+    p = ggplot(data = CleanDeathData,aes(x=CleanDeathData %>% select(vars[i]), y=CleanDeathData %>% select(vars[j])))+
+      ylab(vars[j])+xlab(vars[i])+geom_point(aes(size = CleanDeathData %>% select(vars[i]))) +
+      theme(legend.position = "none") +
+      geom_smooth(method="lm", formula=y~x, colour = "blue") 
+    plots = list.append(plots,p)
+  }
+}
+
+do.call(grid.arrange,c(plots[1:16],ncol = 4))
+do.call(grid.arrange,c(plots[17:32],ncol = 4))
+do.call(grid.arrange,c(plots[33:48],ncol = 4))
+do.call(grid.arrange,c(plots[49:64],ncol = 4))
+do.call(grid.arrange,c(plots[65:80],ncol = 4))
+do.call(grid.arrange,c(plots[81:96],ncol = 4))
+do.call(grid.arrange,c(plots[97:112],ncol = 4))
+do.call(grid.arrange,c(plots[113:120],ncol = 4))
+```
+
+
+
+**2.** Correlation test between each of mentioned columns with Manner of Death is computed. Education level and Age have the highest correlations, therefore have more influence on the result.
+
+
+```{r}
+Q2Data=CleanDeathData%>%select(sex,Race,Education,Age,Method_Of_Disposition,MannerOfDeath)
+
+Q2Data %>%  ggplot( aes(x = MannerOfDeath, y =.[,1])) + geom_point()+geom_jitter(width = 0.1, height = 0.1)+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(Q2Data)[1])+xlab("Price")->p2_1
+cor.test(Q2Data$sex,Q2Data$MannerOfDeath)
+
+Q2Data %>%  ggplot( aes(x = MannerOfDeath, y =.[,2])) + geom_point()+geom_jitter(width = 0.1, height = 0.1)+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(Q2Data)[2])+xlab("Price")->p2_2
+cor.test(Q2Data$Race,Q2Data$MannerOfDeath)
+
+Q2Data %>%  ggplot( aes(x = MannerOfDeath, y =.[,3])) + geom_point()+geom_jitter(width = 0.1, height = 0.1)+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(Q2Data)[3])+xlab("Price")->p2_3
+cor.test(Q2Data$Education,Q2Data$MannerOfDeath)
+
+Q2Data %>%  ggplot( aes(x = MannerOfDeath, y =.[,4])) + geom_point()+geom_jitter(width = 0.1, height = 0.1)+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(Q2Data)[4])+xlab("Price")->p2_4
+cor.test(Q2Data$Age,Q2Data$MannerOfDeath)
+
+Q2Data %>%  ggplot( aes(x = MannerOfDeath, y =.[,5])) + geom_point()+geom_jitter(width = 0.1, height = 0.1)+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(Q2Data)[5])+xlab("Price")->p2_5
+cor.test(Q2Data$Method_Of_Disposition,Q2Data$MannerOfDeath)
+
+grid.arrange(p2_1, p2_2, p2_3, p2_4,p2_5)
+
+
+```
+
+
+
+**3.**
+Three different model are trained. "mylogit3" is selected as the best since all the inputs get ***, which shows they influence the result. 
+
+
+```{r}
+# Q3
+
+
+mylogit = glm(MannerOfDeath ~ Education + AutopsyNUM + CauseRecode39 + PlaceOfInjury,
+              data = CleanDeathData, family = "binomial"(link = 'logit'))
+summary(mylogit)
+par(mfrow=c(2,2)) 
+plot(mylogit)
+
+
+mylogit2 = glm(MannerOfDeath ~ sex + Race + Method_Of_Disposition + Education + Age + 
+                 AutopsyNUM + CauseRecode39 + PlaceOfInjury,
+              data = CleanDeathData, family = "binomial"(link = 'logit'))
+summary(mylogit2)
+par(mfrow=c(2,2)) 
+plot(mylogit2)
+
+
+mylogit3 = glm(MannerOfDeath ~ Method_Of_Disposition + Education + Age + 
+                 AutopsyNUM + CauseRecode39 + PlaceOfInjury,
+               data = CleanDeathData, family = "binomial"(link = 'logit'))
+summary(mylogit3)
+par(mfrow=c(2,2)) 
+plot(mylogit3)
+
+```
+
+
+**4. **
+
+Using "ROCInfo" we can identify the best possible thereshold. 
+Since the question the police face is whether it was murder or suicide, not whether someone is guilty or innocence, I chosed cost.fp and cost.fn equal. I believe plots show that accuracy is okay.
+
+
+```{r}
+# Q4
+
+CleanDeathData$predictionResult=predict(mylogit3,  newdata = CleanDeathData, type = 'response')
+  #1
+ggplot( CleanDeathData, aes( predictionResult, color = as.factor(MannerOfDeath))) + 
+  geom_density( size = 1 ) + ggtitle( "prediction results" )  +
+  scale_color_economist( name = "data", labels = c( "suicide", "homicide" ) )
+
+  #2
+table(CleanDeathData$MannerOfDeath,ifelse(fitted(mylogit3)>0.5,1,0)) %>% plot()
+
+  #3
+cm_info = ConfusionMatrixInfo( data = CleanDeathData, predict = "predictionResult", 
+                               actual = "MannerOfDeath", cutoff = .35 )
+cm_info$plot
+
+
+TPR = sum(cm_info$data$type == "TP")/sum(CleanDeathData$MannerOfDeath ==1)
+FPR = sum(cm_info$data$type == "FP")/sum(CleanDeathData$MannerOfDeath ==0)
+
+cost_fp = 100;cost_fn = 100
+roc_info = ROCInfo( data = cm_info$data, predict = "predict", 
+                    actual = "actual", cost.fp = cost_fp, cost.fn = cost_fn )
+grid.draw(roc_info$plot)
+
+```
+
+
+**5. **
+Using "Sample", we extract test and train random indices.
+
+```{r}
+
+# Q5
+
+  # extracting test and train random indices
+num = nrow(CleanDeathData)
+train_nrows = sample(1:num,size = 0.8*num, replace = F)
+test_nrows = c(1:num)[-train_nrows]
+
+Train=CleanDeathData[train_nrows,1:16]
+Test=CleanDeathData[test_nrows,1:16]
+
+trainLogMod=glm(MannerOfDeath ~ Method_Of_Disposition + Education + Age + 
+                  AutopsyNUM + CauseRecode39 + PlaceOfInjury,
+                data = Train, family = "binomial"(link = 'logit'))
+Train$predictionResult = predict(trainLogMod,  newdata = Train, type = 'response')
+Test$predictionResult = predict(trainLogMod,  newdata = Test, type = 'response')
+
+ggplot( Train, aes( predictionResult, color = as.factor(MannerOfDeath))) + 
+  geom_density( size = 1 ) +
+  ggtitle( "Train prediction results" ) + 
+  scale_color_economist( name = "data", labels = c( "Suicide", "Homicide" ) )
+
+ggplot( Test, aes( predictionResult, color = as.factor(MannerOfDeath))) + 
+  geom_density( size = 1 ) +
+  ggtitle( "Test prediction results" ) + 
+  scale_color_economist( name = "data", labels = c( "Suicide", "Homicide" ) )
+
+cm_info5 = ConfusionMatrixInfo( data = Test, predict = "predictionResult", 
+                               actual = "MannerOfDeath", cutoff = .4)
+cm_info5$plot
+results5 = cm_info5$data$type
+P = sum(results5 == "FN" | results5 == "TP")
+N = sum(results5 == "FP" | results5 == "TN")
+TP = sum(results5 == "TP")
+TN = sum(results5 == "TN")
+FP = sum(results5 == "FP")
+FN = sum(results5 == "FN")
+ACC = (TP+TN)/(P+N)
+TPR = TP/P
+FPR = FP/N
+
+writeLines(as.character(cat("Positive lable =",P))
+                       ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("Negative lable =",N))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("True Positive prediction =",TP))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("True Negative prediction =",TN))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("False Positive prediction =",FP))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("False Negative prediction =",FN))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("Accuracy =",ACC))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("True positive rate =",TPR))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("False positive rate =",FPR))
+           ,con = stdout(), sep = "\n", useBytes = FALSE)
+
+
+```
+
+
+
+**6. **
+
+0.36 is the best thereshold
+
+```{r}
+# Q6
+accuracy_info = AccuracyCutoffInfo( train = Train, test = Test, 
+                                    predict = "predictionResult", actual = "MannerOfDeath" )
+accuracy_info$plot
+
+accuracy_info$data$cutoff[which.max(accuracy_info$data$test)]
+
+```
+
+
+
+**7.** 
+
+**Test Results:**
+
+```{r}
+# Q7
+
+ # Test
+roc_info5 = ROCInfo( data = cm_info5$data, predict = "predict", 
+                     actual = "actual", cost.fp = cost_fp, cost.fn = cost_fn )
+grid.draw(roc_info5$plot)
+
+```
+
+
+
+**Train Results:**
+
+```{r}
+
+ # Train
+
+cm_info7 = ConfusionMatrixInfo( data = Train, predict = "predictionResult", 
+                                actual = "MannerOfDeath", cutoff = .4)
+roc_info7 = ROCInfo( data = cm_info7$data, predict = "predict", 
+                     actual = "actual", cost.fp = cost_fp, cost.fn = cost_fn )
+grid.draw(roc_info7$plot)
+
+```
+
+
+**8.** 
+
+TPR  of this model (recall) doesn't show a significant change when compared to previuos model.
+FPR  of this model (1-specificity) doesn't show a significant change when compared to previuos model.
+
+```{r}
+library(h2o)
+h2o.init(nthreads = -1, max_mem_size = '2g', ip = "127.0.0.1", port = 50001)
+hDeathData = as.h2o(CleanDeathData)
+chglm = h2o.glm(y = "MannerOfDeath", x= colnames(hDeathData)[c(1:9,10:16)],
+                training_frame = hDeathData, family="binomial",nfolds = 5)
+
+chglm
+
+```
+
+
+**9.**
+<p dir="RTL">
+لیبیل های داده های ورودی بر اساس تشخیص پلیس و دادستان تعیین شده اند که میتواند خطا داشته باشد و بعضی قتل ها را خودکشی و بعضی خودکشی ها را قتل تشخیص داده باشند. پس وقتی سیستمی را بر اساس این داده ها آموزش می دهیم، سپس پلیس و قاضی را از نتایج آن آگاه میکنیم، منطق و تصمیم گیری آن افراد را تحت تاثیر قرار میدهیم (لنگر ذهنی). حتی اگر خروجی این شبکه به عنوان دلیل قوی ای در سیستم قضایی جا نداشته باشد، به روند تصمیم گیری جهت میدهد.
+وقتی قاضی و پلیس، در مورد پرونده های جدید به کمک خروجی این شبکه تصمیم گیری میکنند و ما مثلا سالی یکبار مدل را با توجه به داده های جدید بهبود میدهیم، خطای شبکه رفته رفته افزایش میابد. چون خطا های شبکه ی قدیمی، به عنوان داده ی ترین شبکه ی نو استفاده میشود. رفته رفته خطا افزایش میابد و لوپ باطلی است.
+به علاوه از نظر اخلاقی هر پرونده باید مستقل بررسی شود و نه تحت تاثیر پرونده های قبلی. اگر از سیستم ای استفاده کنیم که بر اساس داده های پرونده های قبلی آموزش دیده، قانون نقض شده است. زیرا هر پرونده ویژگی های منحصر به فرد خود را دارد. نمیتوان همه ی اطلاعات را در ۳۰-۴۰ ستون دسته بندی کرد. در چنین موضوعاتی نمیتوان و نباید از چنین سرویسی استفاده کنیم.
+</p>
+
+
+<p dir="RTL">
+لزوما هر پرونده ی تشخیص قتل یا خودکشی مظنونی ندارد. (بسیاری از پرونده های جنایی هیچ گاه مختومه نمیشوند و یا قاتل های بسیاری هرگز پیدا نمیشوند.)
+اگر بخواهیم از سرناچاری سیستمی برای کمک به قضات طراحی کنیم، زمانی که مظنونی برای پرونده وجود دارد باید pvalue را بسیار کوچک بگیریم. (چون فرض بیگناهی مظنون باید باشد)  وقتی مظنونی وجود ندارد، میتوان pvalue را بزرگتر گرفت تا پلیس به دنبال شواهد بیشتری برای پیدا کردن قاتل احتمالی یا رد فرضیه ی رخدادن قتل بگردد.
+</p>
+
+
+

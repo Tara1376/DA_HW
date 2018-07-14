@@ -1,0 +1,367 @@
+---
+title: "report 11"
+author: "Tara Boroushaki 93105501"
+date: "7/12/2018"
+output: html_document
+---
+## libraries
+```{r,warning=F,message=F}
+library(readr)
+library(plotly)
+library(animation)
+library(ggmap)
+library(ggplot2)
+library(highcharter)
+library(ngram)
+library(EBImage)
+library(png)
+library(stringr)
+library(dplyr)
+library(rlang)
+library(caTools)
+library(MASS)
+setwd("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_11/")
+```
+***
+
+# 1.
+
+```{r,warning=F}
+historical_web=read_rds("./data/historical_web_data_26112015.rds")
+historical_web=historical_web[-c(771,1717),]
+disaster= read_delim("./data/disaster.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
+
+
+axx <- list(
+  nticks = 4,
+  range = c(20,40),
+  title = "Latitude" 
+)
+
+axy <- list(
+  nticks = 4,
+  range = c(40,63),
+  title = "Longitude"
+)
+
+axz <- list(
+  nticks = 4,
+  range = c(-45,0),
+  title = "Depth" 
+)
+
+p <- plot_ly(x = ~historical_web$Latitude, y = ~historical_web$Longitude,
+             z = ~(-historical_web$Depth),size=~historical_web$Magnitude,type = "scatter3d" )%>%
+  layout(scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
+p
+
+
+```
+***
+
+# 2.
+ The Gif was produced by the following code running on a friend's laptop since installing ImageMagick was not sucessful on mine. The output result is  in the files uploaded.
+
+```
+map.world <- map_data("world")
+
+disaster= read_delim("./data/disaster.txt", "\t", escape_double = FALSE, trim_ws = TRUE)
+map.world <- map_data("world")
+
+disALL = disaster %>% filter(FLAG_TSUNAMI=="Tsu",YEAR>1850)%>%
+  select(LATITUDE,LONGITUDE, INTENSITY, COUNTRY,YEAR)%>%na.omit()
+
+p = ggplot() + geom_polygon(data=map.world,aes(x=long,y=lat,group=group),fill="grey49",color="pink3")+
+  geom_point(data=disALL,aes(x=LONGITUDE,y=LATITUDE, frame = YEAR,
+                             cumulative = FALSE,size = INTENSITY),alpha = 0.65,
+             fill="red",color="red2") +
+  theme(panel.background = element_rect(fill = "skyblue1",
+                                        colour = "skyblue1",
+                                        size = 0.5, linetype = "solid"))
+
+gganimate(p, "output.gif")
+
+
+```
+
+
+***
+
+# 3.
+
+
+```{r,warning=F}
+# Q3
+
+
+iran_earthquake=read_rds("./data/iran_earthquake.rds")
+iranMap = read_rds("./data/Tehrn_map_6.rds")
+iran_earthquake%>%filter(Long<65,Long>40,Lat<40,Lat>25)->iran_earthquake_1
+WorldData <- map_data('world')
+WorldData%>%filter(region=="Iran")->iran_map
+
+ggplot() + 
+  geom_polygon(data=iran_map, aes(x=long, y=lat, group=group), 
+               color="white", fill="grey60") + 
+  stat_density2d(data=iran_earthquake, aes(x=Long, y=Lat, fill=..level..), 
+                 geom='polygon') +
+  geom_point(data=iran_earthquake_1, aes(x=Long, y=Lat), 
+             color="coral1", alpha=0.015,size=0.002) +
+  theme_bw()
+
+
+```
+***
+
+
+# 4.
+Strong earthquakes happens sparsely, so we can assume they have a Poisson distribution. Since the number of earthquakes over 7 degrees of magnitudes is too low, I changed it to 6.5 degrees of magnitudes. The probability that an strong earthquake happens in Iran is as follow:
+
+```{r,warning=F}
+iran_earthquake%>%filter(Mag>6.4)%>%mutate(time=as.numeric(OriginTime))->iran_earthquake_mag7
+# fitting a Poisson distribution using maximum-likelihood 
+u=fitdistr((iran_earthquake_mag7$time)-min(iran_earthquake_mag7$time),densfun='Poisson')
+year_5=60*60*24*30*12
+lamda=68452377.100
+1-exp(-year_5/lamda)
+
+```
+***
+
+# 5.
+
+```{r,warning=F}
+
+disaster%>%group_by(COUNTRY)%>%summarise(MEANdeath=mean(DEATHS,na.rm = T),SUMdeath=sum(DEATHS,na.rm = T))->q4_dis
+q4_dis$region=tolower(q4_dis$COUNTRY)
+WorldData$region=tolower(WorldData$region)
+
+Q4_data=left_join(WorldData,q4_dis,by="region")
+Q4_data$MEANdeath=floor(Q4_data$MEANdeath/50)
+Q4_data$SUMdeath=floor(Q4_data$SUMdeath/100)
+
+ggplot() + 
+  geom_polygon(data=Q4_data, aes(x=long, y=lat, group=group,alpha=MEANdeath), 
+               color="black",fill="maroon")+
+  theme(panel.background = 
+          element_rect(fill = "aliceblue",colour = "skyblue1",
+                       size = 0.5, linetype = "solid"))+
+  ggtitle("MEAN death")
+
+ggplot() + 
+  geom_polygon(data=Q4_data, aes(x=long, y=lat, group=group,alpha=SUMdeath), 
+               color="black",fill="red2")+
+  theme(panel.background = 
+          element_rect(fill = "aliceblue",colour = "skyblue1",
+                       size = 0.5, linetype = "solid"))+
+  ggtitle("SUM death")
+
+
+```
+***
+
+# 6.
+
+
+```{r,warning=F}
+disaster%>%dplyr::select(YEAR,I_D,LATITUDE,LONGITUDE,FOCAL_DEPTH,EQ_PRIMARY,SECOND,DEATHS)%>%
+  filter(YEAR>1900)%>%na.omit()->Q6_dis
+num=dim(Q6_dis)[1]
+trainNum=floor(0.8*num)
+Q6_dis=Q6_dis[sample(1:num, replace = F),]
+fit=glm(DEATHS ~ (LONGITUDE + LATITUDE + FOCAL_DEPTH + EQ_PRIMARY+SECOND )^2,data=Q6_dis[1:num,])
+#summary(fit)
+result_Train= as.data.frame( Q6_dis[1:trainNum,"DEATHS"] )
+data=Q6_dis[1:trainNum,c("LONGITUDE",
+                         "LATITUDE" , "FOCAL_DEPTH",
+                         "EQ_PRIMARY", "SECOND")]
+result_Train$predict=predict(fit,data)
+names(result_Train)=c("death","prediction")
+result_Train=result_Train%>%arrange(-death)
+ggplot(result_Train)+ geom_smooth(aes(x=death,y=death),color="red")+
+  geom_line(aes(x=prediction,y=death),color="blue")+
+  xlab("prediction")+ylab("death")
+
+result_Test= as.data.frame( Q6_dis$DEATHS[(trainNum+1):num] )
+data=Q6_dis[(trainNum+1):num,]
+result_Test$predict=predict(fit,data)
+names(result_Test)=c("death","prediction")
+ggplot(result_Test)+ geom_smooth(aes(x=death,y=death),color="red")+
+  geom_line(aes(x=prediction,y=death),color="blue")+
+  xlab("prediction")+ylab("death")
+
+
+```
+***
+
+# 7.
+First we extract number of pre-earthquakes of the last 3 days before a semi-strong quake in every small area. It is obvious from the plots that the majority of strong quakes did not have any pre-shake.
+
+```{r,warning=F}
+# Q7
+worldwide=read_csv("./data/worldwide.csv")
+worldwide=worldwide%>%filter(type=="earthquake")%>%
+  dplyr::select(time,latitude,longitude,depth,mag)
+
+worldwide%>%mutate(lat=round(latitude),lon=round(longitude))%>%
+  dplyr::select(time,lat,lon,depth,mag)->worldwide_
+worldwide_=worldwide_%>%na.omit()
+pish=data_frame(time=0,lat=0,lon=0,depth=0,mag=0,numPish=0,
+                meanMag=0,maxMag=0,minMag=0,meanDepth=0,meanTime=0)
+
+for (i in (-40:45)*2) {
+  for (j in (-60:60)*3) {
+    worldwide_%>%filter(lat>=i-1.5,lat<=i+1.5,lon<=j+2,lon>=j-2)->x
+    if(dim(x)[1]>0){
+      x=x%>%arrange(time)
+      l=dim(x)[1]
+      x%>%filter(mag>5)->y
+      y%>%mutate(numPish=0,meanMag=0,maxMag=0,minMag=0,meanDepth=0,meanTime=0)->y
+      if(dim(y)[1]>0){
+        for (k in 1:dim(y)[1]) {
+          x%>%filter(as.numeric(x[2,"time"]-y[k, "time"],units = "hours")<10000,
+                     as.numeric(x[2,"time"]-y[k, "time"],units = "secs")>90)->x2
+          if(dim(x2)[1]>0){
+            y[k,"numPish"]=dim(x2)[1]
+            y[k,"meanMag"]=mean(x2$mag,na.rm = T)
+            y[k,"maxMag"]=max(x2$mag)
+            y[k,"minMag"]=min(x2$mag)
+            y[k,"meanDepth"]=mean(x2$depth,na.rm = T)
+            y[k,"meanTime"]=mean(x2$depth,na.rm = T)
+          }
+          
+        }
+        pish=rbind(pish,y)
+      }
+    }
+  }
+}
+
+
+pish%>%filter(mag>=maxMag)->pish_
+
+pish_%>%group_by(time,lat,lon)%>%summarise(
+  numPish_=max(numPish),meanMag_=mean(meanMag,na.rm = T),
+  maxMag_=mean(maxMag,na.rm = T),minMag_=mean(minMag,na.rm = T),
+  meanDepth_=mean(meanDepth,na.rm = T),meanTime_=mean(meanTime,na.rm = T),
+  mag_=mean(mag,na.rm = T),depth_=mean(depth,na.rm = T))->pish_2                                 
+
+ggplot(pish_2)+geom_histogram(aes(x=numPish_))+ggtitle("main earthquake is bigger than 5")
+
+ggplot(pish_2%>%filter(mag_>6))+geom_histogram(aes(x=numPish_))+ggtitle("main earthquake is bigger than 6")
+
+
+```
+***
+
+# 8.
+According to the spearman correlation test result, there is not any significant relation between depth and magnitude. It can also be inferred from the 2D density plot
+
+```{r,warning=F}
+worldwide%>%dplyr::select(mag,depth)%>%na.omit() -> Q8
+Q8$mag=as.double(Q8$mag)
+Q8$depth=as.double(Q8$depth)
+cor.test(Q8$depth,Q8$mag,method = "spearman")
+
+ggplot(Q8)+stat_density2d(aes(x=mag, y=depth, fill=..level..), 
+                          geom='polygon')+
+  ggtitle(" depth vs magnitude ")
+
+```
+
+
+# 9.
+
+There has been an increase in number if strong earthquakes during the last 2 centrury and the last century. As a result, the increase in the 21st century might be a part of that trend. If we extract earthquakes stronger than 7 degrees of magnitude before and after 1993 and conduct the t.test the following result will be achieved. It indicates that there in nothing such as HAARP if the significance level is 0.1 .
+
+```{r,warning=F}
+disaster%>%dplyr::select(I_D,COUNTRY,YEAR,LONGITUDE,LATITUDE,EQ_PRIMARY)%>%filter(EQ_PRIMARY>6)->Q9
+
+ggplot(Q9)+geom_histogram(aes(x=YEAR),binwidth = 100)+
+  ggtitle("earthquake stronger than 6 over centuries")
+ggplot(Q9%>%filter(YEAR>1820))+geom_histogram(aes(x=YEAR),binwidth = 5,color="green",fill="seagreen")+
+  ggtitle("earthquake stronger than 6 over last 2 century")
+ggplot(Q9%>%filter(YEAR>1920))+geom_histogram(aes(x=YEAR),binwidth = 5,color="green",fill="seagreen")+
+  ggtitle("earthquake stronger than 6 over last century")
+# cold war = 1947 – 1991
+# HAARP Established	1993
+ggplot(Q9%>%filter(YEAR>1970))+geom_histogram(aes(x=YEAR),binwidth = 5,color="green",fill="seagreen")+
+  ggtitle("earthquake stronger than 6 over last half-century")
+
+ggplot(Q9%>%filter(YEAR>1970,EQ_PRIMARY>7))+geom_histogram(aes(x=YEAR),binwidth = 5,color="green",fill="seagreen")+
+  ggtitle("earthquake stronger than 7 over last half-century")
+
+
+Q9%>%filter(YEAR>1993,YEAR<2016,EQ_PRIMARY>7)%>%dplyr::select(EQ_PRIMARY)->j1
+Q9%>%filter(YEAR<1993,YEAR>1980,EQ_PRIMARY>7)%>%dplyr::select(EQ_PRIMARY)->j2
+
+t.test(j1$EQ_PRIMARY,j2$EQ_PRIMARY)
+
+
+```
+
+
+# 10.
+ 
+### a,b.
+Earthquakes don't kill people; poorly constructed buildings do.
+
+In this section the death of JAPANESE and CHILIAN people are extracted from disaster dataset. Japanese are known to be percise and perfect engineers, the trend shows that the peaks are now smaller than previous centuries. 
+
+Chile is the only developed country in Latin America and is also known for its strong earthquakes. However, the peaks of death does not show any decrease which indicates that more investment is needed to strengthen buildings. 
+
+```{r,warning=F}
+disaster%>%filter(COUNTRY=="JAPAN",YEAR>1800)%>%
+  filter(!is.na(DEATHS))%>%arrange(DEATHS)%>%
+  dplyr::select(I_D,YEAR,DEATHS,FOCAL_DEPTH,EQ_PRIMARY,MISSING)->JAPAN
+
+JAPAN%>%group_by(YEAR)%>%summarise(meanDeath=mean(DEATHS),MAG=round(mean(EQ_PRIMARY)))->JAPAN2
+
+disaster%>%filter(COUNTRY=="CHILE",YEAR>1800)%>%
+  filter(!is.na(DEATHS))%>%arrange(DEATHS)%>%
+  dplyr::select(I_D,YEAR,DEATHS,FOCAL_DEPTH,EQ_PRIMARY,MISSING)->CHILE
+
+CHILE%>%group_by(YEAR)%>%summarise(meanDeath=mean(DEATHS),MAG=round(mean(EQ_PRIMARY)))->CHILE2
+
+
+hchart(JAPAN2, "line", hcaes(x = YEAR, y = meanDeath),name="JAPAN")%>%
+  hc_add_series(CHILE2, "line", hcaes(x = YEAR, y = meanDeath),name="CHILE")
+
+```
+ 
+ 
+
+### c,d.
+I wondered whether there is any relation between number of death and number of people missing. The disasters, whose "missing" and "death" columns were not NA, were extracted and the line-plot of the death and missing is as follows. It is obvious from the plot that the number of death and missing have not been related in the 21st century. The cor.test confirms that number of death and number of people missing are not correlated.
+
+
+```{r}
+disaster%>%filter(YEAR>1930)%>%
+  filter(!is.na(DEATHS),!is.na(MISSING))%>%arrange(DEATHS)%>%
+  mutate(year=as.numeric(YEAR),Missing=as.numeric(MISSING),death=as.numeric(DEATHS))%>%
+  dplyr::select(I_D,year,death,FOCAL_DEPTH,EQ_PRIMARY,Missing,FLAG_TSUNAMI)%>%arrange(year)->q10
+
+hchart(q10, "line", hcaes(x = year, y = death),name="DEATHS")%>%
+    hc_add_series(q10, "line", hcaes(x = year, y = Missing),name="MISSING")
+
+
+
+```
+
+
+Moreover, the mean number of missing people in TSUNAMI is lower that the mean number of missing people in disaster other that TSUNAMI. (I used to believed since many dead bodies are drowned in the ocean water and lost, the number of missing must be higher.)
+```{r}
+# missing in TSUNAMI
+q10%>%filter(FLAG_TSUNAMI=="Tsu")%>%summarise(missing=sum(Missing)/n())
+
+# not missing in TSUNAMI
+q10%>%filter(is.na(FLAG_TSUNAMI))%>%summarise(missing=sum(Missing)/n())
+
+
+```
+
+
+
+
+
+
