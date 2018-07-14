@@ -1,0 +1,489 @@
+---
+title: "Report HW4"
+author: "Tara Boroushaki 93105501"
+date: "3/8/2018"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(highcharter)
+library(ggplot2)
+
+bcg = read_rds("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_4/hw_04/Data/bcg.rds") # school background
+bsg = read_rds("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_4/hw_04/Data/bsg.rds") # student background
+btg = read_rds("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_4/hw_04/Data/btm.rds") # Teacher background
+bsa = read_rds("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_4/hw_04/Data/bsa.rds") # strudent result
+bst = read_rds("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_4/hw_04/Data/bst.rds") # student-teacher linkage
+bsr = read_rds("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_4/hw_04/Data/bsr.rds") # within-country
+
+```
+
+1. Teacher's satisfaction was extracted from Teachers Questionnaire question 10 a-g. The mean of answers to each section of the question is calculated, then rounded to give 4 levels of satisfaction. using AOV and t.test it can be shown that satisfied teacher had more successful student.
+
+```{r}
+bst$score=0  # student successfulness :))))) 
+bst$score=rowMeans(bst[,25:29])
+
+bst_summarise=bst %>% select(idcntry,idschool,idteach,score)
+
+
+btm_summarise=btg %>% mutate(stisfaction1=as.numeric(btbg10a),stisfaction2=as.numeric(btbg10b),stisfaction3=as.numeric(btbg10c),
+                             stisfaction4=as.numeric(btbg10d),stisfaction5=as.numeric(btbg10e),stisfaction6=as.numeric(btbg10f),
+                             stisfaction7=as.numeric(btbg10f)) %>% select(idcntry,idschool,idteach,stisfaction1,stisfaction2,
+                                                                          stisfaction3,stisfaction4,stisfaction5,stisfaction6,stisfaction7)
+btm_summarise$stisfaction=round(rowMeans(btm_summarise[,4:10],na.rm = T) )
+btm_summarise=btm_summarise%>%select(idcntry,idschool,idteach,stisfaction)
+S_vs_T=merge(bst_summarise,btm_summarise,by=c("idcntry","idschool","idteach"))%>% filter(!is.na(stisfaction))
+aov(score ~ stisfaction, data = S_vs_T) -> fit
+fit
+summary.aov(fit)
+
+S_vs_T%>%group_by(stisfaction) %>% summarise(Score=mean(score)) %>% 
+  hchart(type="bar",hcaes(x = stisfaction, y = Score),name = "")%>%
+  hc_title(text = "Q1")%>%
+  hc_subtitle(text = "(1=the most satisfied, 4=the least satisfied)")->p1    
+p1
+
+
+
+g1=S_vs_T %>% filter(stisfaction<3)
+g2=S_vs_T %>% filter(stisfaction>2)
+t.test(g1$score,g2$score, "less")
+
+
+ha1=as.data.frame(c(stisfied = mean(g1$score),NOTsatisfied= mean(g2$score)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("stisfied","NOT satisfied"))
+p1_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("mean")+ggtitle("Q1")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p1_
+
+```
+```{r}
+hchart(density(g1$score), type = "area",name="satisfied") %>% hc_add_series(density(g2$score), type = "area",name="not satisfied")
+```
+
+
+
+
+2. First, students who didn't know their parents education level were ommited. mother and father edulation level were added to give a 14 level feature. it can be seen that students who are from educated parents have better math score. To make it clear, the second plot shows the mean of student from families below and above the 7th level.
+ 
+
+```{r}
+bsg_summarise=bsg%>%select(idcntry,idschool,idstud,bsbg07a,bsbg07b)%>%filter(!is.na(bsbg07a))%>%filter(!is.na(bsbg07b))%>%
+    filter(bsbg07a!=8)%>%filter(bsbg07b!=8)%>%mutate(eduLevel=(as.numeric(bsbg07b)+as.numeric(bsbg07a)))
+
+bst_summarise=bst %>% select(idcntry,idschool,idstud,score)
+
+St_vs_bg=merge(bst_summarise,bsg_summarise,by=c("idcntry","idschool","idstud"))
+aov(score ~ eduLevel, data = St_vs_bg) -> fit2
+fit2
+summary.aov(fit2)
+
+St_vs_bg%>%group_by(eduLevel) %>% summarise(Score=mean(score)) %>% 
+  hchart(type="bar",hcaes(x = eduLevel, y = Score),name = "")%>%
+  hc_title(text = "Q2- Family education Level")%>%
+  hc_xAxis(title = list(text = "parent edu level ")) %>% 
+  hc_subtitle(text = "(the more the higher)") ->p2    
+p2
+
+g1=St_vs_bg %>% filter(eduLevel>7)
+g2=St_vs_bg %>% filter(eduLevel<=7)
+t.test(g1$score,g2$score, "less")
+
+ha1=as.data.frame(c(high = mean(g1$score),low= mean(g2$score)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("highly educated","normal or low educated"))
+p2_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("mean score")+ggtitle("Q2")
+p2_
+
+```
+```{r}
+hchart(density(g1$score), type = "area",name="highly educated") %>% hc_add_series(density(g2$score), type = "area",name="low educated")
+```
+
+
+3. the wealth of students' families was extracted from Students Questionnaire question 6 a-k. The number of "YES" answers are calculated, then rounded to give 11 levels of wealth using AOV and t.test it can be shown that wealthy students had higher math scores.To make it clear, the second plot shows the mean of student from families below and above the 7th level.
+
+
+
+
+```{r}
+bsg_summarise=bsg%>%select(idcntry,idschool,idstud,bsbg06a,bsbg06b,bsbg06c,bsbg06d,bsbg06e,bsbg06f,bsbg06g,bsbg06h,bsbg06i,bsbg06j,bsbg06k)%>%
+  mutate(hpos1=as.numeric(bsbg06a)-2,hpos2=as.numeric(bsbg06b)-2,hpos3=as.numeric(bsbg06c)-2,
+         hpos4=as.numeric(bsbg06d)-2,hpos5=as.numeric(bsbg06e)-2,hpos6=as.numeric(bsbg06f)-2,
+         hpos7=as.numeric(bsbg06g)-2,hpos8=as.numeric(bsbg06h)-2,hpos9=as.numeric(bsbg06i)-2,
+         hpos10=as.numeric(bsbg06j)-2,hpos11=as.numeric(bsbg06k)-2)
+bsg_summarise=na.omit(bsg_summarise)
+bsg_summarise= bsg_summarise %>% mutate(hPosLevel=-(hpos1+hpos2+hpos3+hpos4+hpos5+hpos6+hpos7+hpos8+hpos9+hpos10+hpos11)) %>% 
+        select(idcntry,idschool,idstud,hPosLevel)
+
+St_vs_bg3=merge(bst_summarise,bsg_summarise,by=c("idcntry","idschool","idstud"))
+aov(score ~ hPosLevel, data = St_vs_bg3) -> fit3
+fit3
+summary.aov(fit3)
+
+St_vs_bg3%>%group_by(hPosLevel) %>% summarise(Score=mean(score)) %>% 
+  hchart(type="bar",hcaes(x = hPosLevel, y = Score),name = "")%>%
+  hc_title(text = "Q3- home possesions")%>%
+  hc_xAxis(title = list(text = "home possesions ")) %>% 
+  hc_yAxis(title = list(text = "mean Score ")) %>% 
+  hc_subtitle(text = "(the more, the better)") ->p3   
+p3
+
+
+g1=St_vs_bg3 %>% filter(hPosLevel>7)
+g2=St_vs_bg3 %>% filter(hPosLevel<=7)
+t.test(g1$score,g2$score, "less")
+
+ha1=as.data.frame(c(high = mean(g1$score),low= mean(g2$score)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("wealthy","not wealthy"))
+p3_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("mean score")+ggtitle("Q3")
+p3_
+
+```
+```{r}
+hchart(density(g1$score), type = "area",name="wealthy") %>% hc_add_series(density(g2$score), type = "area",name="not wealthy")
+```
+
+4. the safety level of schools was extracted from School Questionnaire question 15 f-k. The mean of answers to each section of the question is calculated, then rounded to give 4 levels of safety. Using AOV and t.test it can be shown that students of safer schools had higher math scores.
+
+
+
+```{r}
+bcg_summarise=bcg %>%select(idcntry,idschool,bcbg15f,bcbg15g,bcbg15h,bcbg15i,bcbg15j,bcbg15k)%>%
+  mutate(peac1=as.numeric(bcbg15f),peac2=as.numeric(bcbg15g),peac3=as.numeric(bcbg15h),
+         peac4=as.numeric(bcbg15i),peac5=as.numeric(bcbg15j),peac5=as.numeric(bcbg15k)) 
+bcg_summarise$peace=round(rowMeans(bcg_summarise[,9:13],na.rm = T) )
+bcg_summarise=bcg_summarise %>% select(idcntry,idschool,peace) %>% filter(!is.na(peace))
+
+
+bst_summarise2=bst_summarise %>% group_by(idcntry,idschool) %>% summarise(MScore=mean(score))
+
+St_vs_sch=merge(bst_summarise2,bcg_summarise,by=c("idcntry","idschool"))
+aov(MScore ~ peace, data = St_vs_sch) -> fit4
+fit4
+summary.aov(fit4)
+
+St_vs_sch%>%group_by(peace) %>% summarise(Score=mean(MScore)) %>% 
+  hchart(type="bar",hcaes(x = peace, y = Score),name = "")%>%
+  hc_title(text = "Q4- school saftey")%>%
+  hc_xAxis(title = list(text = " school saftey ")) %>% 
+  hc_yAxis(title = list(text = "mean Score ")) %>% 
+  hc_subtitle(text = "(the less, the more peacful)") ->p4   
+p4
+
+
+
+g1=St_vs_sch %>% filter(peace==4 | peace==3)
+g2=St_vs_sch %>% filter(peace<3)
+t.test(g1$MScore,g2$MScore,"greater")
+
+ha1=as.data.frame(c(high = mean(g1$MScore),low= mean(g2$MScore)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("not safe","safe"))
+p4_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("mean score")+ggtitle("Q4")
+p4_
+
+
+```
+```{r}
+hchart(density(g1$MScore), type = "area",name="not safe") %>% hc_add_series(density(g2$MScore), type = "area",name="safe")
+```
+
+5. Teachers' years of experience was extracted from Teachers Questionnaire question btbg01, and their level of education from the same Questionnaire question btbg04. 
+
+every 5 years of experience is equivalnet to one level.Generally, experienced teachers' students have higher mean math Score, but the oldest group of teachers have the lowest mean score of all. probably because it is hard for young students to communicate with old people. To clarify the difference the plot of (mean-350) is shown.
+
+The plots and AOV and t.test confirm that the more educated the teacher is, the higher the mean scores of the students are.
+
+
+```{r}
+btm_summarise=btg %>% select(idcntry,idschool,idteach,btbg04,year=btbg01)%>%mutate(yearLevel=round(year/5)+1) %>% 
+        select(idcntry,idschool,idteach,degree=btbg04,yearLevel)
+#btm_summarise$yearLevel[which(btm_summarise$yearLevel>6)]=7
+bst_summarise2=bst_summarise %>% group_by(idcntry,idschool) %>% summarise(MScore=mean(score))
+St_vs_bg5=merge(btm_summarise,bst_summarise2,by=c("idcntry","idschool"))
+
+    ######  year    #######
+
+aov(MScore ~ yearLevel, data = St_vs_bg5) -> fit5
+fit5
+summary.aov(fit5)
+
+St_vs_bg5%>%group_by(yearLevel) %>% summarise(Score=mean(MScore)-350) %>% 
+  hchart(type="bar",hcaes(x = yearLevel, y = Score),name = "")%>%
+  hc_title(text = "Q5- teacher years of exprience")%>%
+  hc_xAxis(title = list(text = " teacher years of exprience")) %>% 
+  hc_yAxis(title = list(text = "[ mean Score -350 ]")) %>% 
+  hc_subtitle(text = "(the higher the number, the more experience the teaher is)") ->p5   
+p5
+
+
+g1=St_vs_bg5 %>% filter(yearLevel>3 & yearLevel<11)
+g2=St_vs_bg5 %>% filter(yearLevel<4)
+t.test(g1$MScore,g2$MScore,"less")
+
+ha1=as.data.frame(c(high = mean(g1$MScore)-450,low= mean(g2$MScore)-450))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("highly exprienced","not highly exprience"))
+p5_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("[ mean score - 450 ]")+ggtitle("Q5")
+p5_
+```
+```{r}
+hchart(density(as.numeric(g1$MScore)), type = "area",name="highly exprience") %>% hc_add_series(density(as.numeric(g2$MScore)), type = "area",name="not highly exprience")
+```
+```{r}
+
+    ######  degree    #######
+
+aov(MScore ~ degree, data = St_vs_bg5) -> fit5_1
+fit5_1
+summary.aov(fit5_1)
+
+St_vs_bg5%>%group_by(degree) %>% summarise(Score=mean(MScore)) %>% 
+  hchart(type="bar",hcaes(x = degree, y = Score),name = "")%>%
+  hc_title(text = "Q5- teacher's degree")%>%
+  hc_xAxis(title = list(text = " teacher degree ")) %>% 
+  hc_yAxis(title = list(text = "[ mean Score ]")) %>% 
+  hc_subtitle(text = "(the higher, the more educated the teaher is)") ->p5_2   
+p5_2
+
+
+g1=St_vs_bg5 %>% filter(degree<4)
+g2=St_vs_bg5 %>% filter(degree>3)
+t.test(g1$MScore,g2$MScore,"greater")
+
+ha1=as.data.frame(c(high = mean(g1$MScore),low= mean(g2$MScore)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("highly educated","not highly educated"))
+p5_3=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("[ mean score ]")+ggtitle("Q5- teacher degree")
+p5_3
+
+
+```
+```{r}
+hchart(density(g1$MScore), type = "area",name="highly educated") %>% hc_add_series(density(g2$MScore), type = "area",name="not highly educated")
+```
+
+
+
+
+6. Due to test result, boys do not have higher gardes in geometry. The t.test shows that girls has achieved higher mean geometry score.
+
+
+```{r}
+bst_summarise6=bst %>% mutate(geoScore=(bsmgeo01+bsmgeo02+bsmgeo03+bsmgeo04+bsmgeo05)/5) %>% select(idcntry,idschool,idstud,geoScore )
+
+bsg_summarise2=bsg%>%select(idcntry,idschool,idstud,itsex)
+St_vs_bg6=merge(bst_summarise6,bsg_summarise2,by=c("idcntry","idschool","idstud"))
+St_vs_bg6=na.omit(St_vs_bg6)
+aov(geoScore ~ itsex, data = St_vs_bg6) -> fit6
+fit6
+summary.aov(fit6)
+
+St_vs_bg6%>%mutate(ScorePlot=round(geoScore/50)*50)%>%group_by(itsex,ScorePlot)%>%summarise(num=n())->exp6
+exp6=na.omit(exp6) 
+exp6$gender=""
+exp6$gender[which(exp6$itsex==1)]="female"
+exp6$gender[which(exp6$itsex==2)]="male"
+p6_=ggplot(exp6,aes(x=ScorePlot,y=num))+
+  geom_bar(aes(fill = gender),stat = "identity",position = "dodge",linetype = "dashed",color = "red",alpha=0.5)+
+  xlab("Geometry Score")+ylab("freq")+ggtitle("Q6- Gender and Geometry")
+p6_  
+
+
+
+g1=St_vs_bg6 %>% filter(itsex==1)
+g2=St_vs_bg6 %>% filter(itsex==2)
+t.test(g1$geoScore,g2$geoScore,"less")
+
+ha1=as.data.frame(c(female = mean(g1$geoScore)-450,male= mean(g2$geoScore)-450))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("female","male"))
+
+ha1 %>% hchart(type="bar",hcaes(x = group, y = mean),name = "")%>%
+  hc_title(text = "Q6- Gender and Geometry")%>%
+  hc_xAxis(title = list(text = " Gender ")) %>% 
+  hc_yAxis(title = list(text = "[ mean Geometry Score - 450]")) ->p6
+p6
+
+```
+```{r}
+hchart(density(g1$geoScore), type = "area",name="female") %>% hc_add_series(density(g2$geoScore), type = "area",name="male")
+```
+
+
+7. For this question, whether or not the student eats breakfast in the morning relation with math score is evalutaed. Question 12 from Students Questionnaire is used for this purpose. Due to the tests and plots, student who always or almost always eat well in the morning have higher mean math scores. 
+(the smaller the number, the better the eatung habits are)
+
+```{r}
+bst_summarise=bst %>% select(idcntry,idschool,idstud,score)
+
+bsg_summarise7=bsg%>%select(idcntry,idschool,idstud,bsbg12)
+
+St_vs_bg7=merge(bst_summarise,bsg_summarise7,by=c("idcntry","idschool","idstud"))
+St_vs_bg7=na.omit(St_vs_bg7)
+aov(score ~ bsbg12, data = St_vs_bg7) -> fit7
+fit7
+summary.aov(fit7)
+
+St_vs_bg7%>%mutate(ScorePlot=round(score/100)*100,breakFast=as.factor(bsbg12))%>%group_by(breakFast,ScorePlot)%>%summarise(num=n())->exp7
+exp7=na.omit(exp7)
+p6_=ggplot(exp7,aes(x=ScorePlot,y=num))+
+  geom_bar(aes(fill = breakFast),stat = "identity",position = "dodge",linetype = "dashed",color = "red",alpha=0.5)+
+  xlab("Score")+ylab("freq")+ggtitle("Q7- breakfast and Scores")
+p6_  
+
+
+g1=St_vs_bg7 %>% filter(bsbg12<3)
+g2=St_vs_bg7 %>% filter(bsbg12>2)
+t.test(g1$score,g2$score, "less")
+
+ha1=as.data.frame(c(w1 = mean(g1$score),w2= mean(g2$score)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("usually eat breakfast","usually don't eat breakfast"))
+
+ha1 %>% hchart(type="bar",hcaes(x = group, y = mean),name = "")%>%
+  hc_title(text = "Q7- breakfast and Scores")%>%
+  hc_xAxis(title = list(text = " breakfast ")) %>% 
+  hc_yAxis(title = list(text = "mean Score")) ->p7
+p7
+
+```
+```{r}
+hchart(density(g1$score), type = "area",name="usually eat breakfast") %>% hc_add_series(density(g2$score), type = "area",name="usually don't eat breakfast")
+```
+
+
+* suggest 3 other questions *
+
+
+1. Does the time which students spend at school play a role in their scores?
+It can be understood that spending too much or too low amount of hours at school have a bad effect on scores. The optimum is about 1000 hours each year. 
+
+
+```{r}
+bst_summarise8=bst %>% select(idcntry,idschool,score)%>%group_by(idcntry,idschool)%>%
+  summarise(MScore=mean(score,na.rm = T))
+bcg_summarise8=bcg %>% select(idcntry,idschool,hour=bcbg07b,dayYear=bcbg07a)%>%
+  mutate(time=(hour/60)*dayYear)%>%select(idcntry,idschool,time)
+
+S_vs_Sch8=merge(bst_summarise8,bcg_summarise8,by=c("idcntry","idschool"))
+S_vs_Sch8=na.omit(S_vs_Sch8)
+aov(MScore ~ time, data = S_vs_Sch8) -> fit8
+fit8
+summary.aov(fit8)
+
+S_vs_Sch8%>%mutate(time2=round(time/50)*50)%>%group_by(time2)%>%summarise(Score=mean(MScore))%>%
+  hchart(type="bar",hcaes(x = time2, y = Score),name = "")%>%
+  hc_title(text = "Q8- school hours")->p8    
+p8
+
+
+g1=S_vs_Sch8 %>% filter(time>1200)
+g2=S_vs_Sch8 %>% filter(time<1200)
+t.test(g1$MScore,g2$MScore, "greater")
+
+ha1=as.data.frame(c(time = mean(g1$MScore),time= mean(g2$MScore)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("longer school days","shorter school days"))
+p8_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("mean Score")+ggtitle("Q8- school hours")
+p8_
+
+```
+```{r}
+hchart(density(g1$MScore), type = "area",name="longer school days") %>% hc_add_series(density(g2$MScore), type = "area",name="shorter school days")
+```
+
+
+2. Making friends and learning how to socialize are the main reason that student are sent to schools. In question 15 of Students Questionnaire, student are asked how much they agree with "I like to see my classmates at school". The test results show that students who agree are agree a littel, have higher mean score than those who disagree. It is noteworthy to mention that students who choosed "agree a littel" have the highest mean score of all.
+
+```{r}
+bst_summarise9=bst %>% select(idcntry,idschool,idstud,score)
+bsg_summarise9=bsg%>%select(idcntry,idschool,idstud,friend=bsbg15d)
+
+S_vs_bg9=merge(bst_summarise9,bsg_summarise9,by=c("idcntry","idschool","idstud"))
+S_vs_bg9=na.omit(S_vs_bg9)
+aov(score ~ friend, data = S_vs_bg9) -> fit9
+fit9
+summary.aov(fit9)
+
+S_vs_bg9%>%group_by(friend)%>%summarise(Score=mean(score))%>%
+  hchart(type="bar",hcaes(x = friend, y = Score),name = "")%>%
+  hc_title(text = "Q9- liking to see friends and score")%>%
+  hc_xAxis(title = list(text = " socializing ")) %>% 
+  hc_yAxis(title = list(text = "[ mean Geometry Score]"))%>%
+  hc_subtitle(text = "(the higher, the less likley to have friends)")->p9    
+p9
+
+
+g1=S_vs_bg9 %>% filter(as.numeric(friend)<3)
+g2=S_vs_bg9 %>% filter(as.numeric(friend)>2)
+t.test(g1$score,g2$score, "greater")
+
+ha1=as.data.frame(c(time = mean(g1$score),time= mean(g2$score)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("happy to see friends","don't like to see classmates"))
+p8_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("Status")+ylab("mean Score")+ggtitle("Q9- liking to see friends and score")
+p8_
+```
+```{r}
+hchart(density(g1$score), type = "area",name="happy to see friends") %>% hc_add_series(density(g2$score), type = "area",name="don't like to see classmates")
+```
+
+
+3.Learning mathematics for more job opportunities:
+In question 20-g of Students Questionnaire, they are asked how much they agree that mathematic is important to get a job in future.
+The test indicate that the students' idea about this question is important. However, by investigating the first plot, it is noteable that only those who completely disagree the notion that math is important to get  job in future has a significantly lower mean score.
+
+```{r}
+bst_summarise9=bst %>% select(idcntry,idschool,idstud,score)
+bsg_summarise9=bsg%>%select(idcntry,idschool,idstud,Job=bsbm20g)
+
+S_vs_bg10=merge(bst_summarise9,bsg_summarise9,by=c("idcntry","idschool","idstud"))
+S_vs_bg10=na.omit(S_vs_bg10)
+aov(score ~ Job, data = S_vs_bg10) -> fit10
+fit10
+summary.aov(fit10)
+
+S_vs_bg10%>%group_by(Job)%>%summarise(Score=mean(score))%>%
+  hchart(type="bar",hcaes(x = Job, y = Score),name = "")%>%
+  hc_title(text = "Q10- math for job")%>%
+  hc_xAxis(title = list(text = " how imp is math for job? ")) %>% 
+  hc_yAxis(title = list(text = "[ mean Score]"))%>%
+  hc_subtitle(text = "(the higher, the less likley to be important for future job)")->p10    
+p10
+
+
+g1=S_vs_bg10 %>% filter(as.numeric(Job)<3)
+g2=S_vs_bg10 %>% filter(as.numeric(Job)>2)
+t.test(g1$score,g2$score, "greater")
+
+ha1=as.data.frame(c(time = mean(g1$score),time= mean(g2$score)))
+names(ha1)=as.factor(c("mean"))
+ha1$group=as.factor(c("important for future job","unimportant for future job"))
+p10_=ggplot(ha1,aes(x=group,y=mean))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("")+ylab("mean Score")+ggtitle("Q10- math for job")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p10_
+```
+```{r}
+hchart(density(g1$score), type = "area",name="important for future job") %>% hc_add_series(density(g2$score), type = "area",name="unimportant for future job")
+```
+
+
+
+

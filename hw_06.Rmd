@@ -1,0 +1,383 @@
+---
+title: "Sixth Week: Linear Models"
+subtitle: "House price prediction"
+author: "Tara Boroushaki"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+<div align="center">
+<img  src="images/house.jpg"  align = 'center'>
+</div>
+
+> <p dir="RTL"> 
+با توجه به داده های قیمت منازل
+لطفا با سوالات زیر پاسخ دهید.
+</p>
+
+```{r,include=FALSE}
+library(readr)
+library(highcharter)
+library(dplyr)
+library(gridExtra)
+library(ggplot2)
+library(Metrics)
+house=read_csv("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_6/house/train.csv")
+
+```
+
+***
+
+<p dir="RTL">
+۱. ماتریس همبستگی متغیرهای مختلف را به دست آورده و سپس رسم نمایید.
+اعداد به دست آمده را با آزمون فرض معناداری همبستگی بسنجید و سپس ده متغیری که همبستگی بالاتری با قیمت دارند را مشخص نمایید.
+</p>
+
+```{r}
+# Q1
+
+h1=house%>%mutate(ageH=2018-YearBuilt,ageG=GarageYrBlt) %>% select_if(is.numeric) %>% 
+    select(ageHome=ageH,ageGarage=ageG,MSSubClass,LotFrontage,LotArea,OverallQual,OverallCond,YearRemodAdd,
+           MasVnrArea,BsmtFinSF1,BsmtFinSF2,BsmtUnfSF,TotalBsmtSF,"1stFlrSF","2ndFlrSF",
+           LowQualFinSF,GrLivArea,BsmtFullBath,BsmtHalfBath,FullBath,HalfBath,BedroomAbvGr,
+           KitchenAbvGr,TotRmsAbvGrd,Fireplaces,GarageCars,GarageArea,WoodDeckSF,OpenPorchSF,
+           EnclosedPorch,"3SsnPorch",ScreenPorch,PoolArea,MiscVal,MoSold,YrSold,SalePrice)
+q1_re1=matrix(0,nrow = 37,ncol = 37)
+q1_re2=matrix(0,nrow = 37,ncol = 37)
+for (i in 1:37) {
+  for (j in 1:37) {
+    q1_re1[i,j]=cor(h1[,i],h1[,j],use="complete.obs")
+    if (i==j)
+      q1_re1[i,j]=0
+    a=cor.test(as.data.frame(h1[,i])[,1],as.data.frame(h1[,j])[,1],na.rm=T)
+    q1_re2[i,j]=as.numeric(a["p.value"])
+  }
+}
+q1_1=as.data.frame(q1_re1)
+colnames(q1_1)=names(h1)
+rownames(q1_1)=names(h1)
+
+largest=order(abs(q1_re1[,37]), decreasing=TRUE)[1:10]
+
+
+for (i in 1:10) {
+  writeLines(as.character(cat(cat(names(q1_1)[largest[i]]," and sale price corelation is"),q1_1[largest[i],37]))
+             ,con = stdout(), sep = "\n", useBytes = FALSE)
+  writeLines("\n")
+}
+
+```
+
+***
+
+<p dir="RTL">
+۲. در یک تصویر نمودار پراکنش دو به دو ده متغیر بدست آمده به همراه قیمت را رسم نمایید و هم خطی بودن متغیرها را بررسی کنید
+</p>
+
+```{r}
+
+
+# Q2
+
+q2_data=h1[,largest]
+q2_data$SalePrice=h1$SalePrice
+#q2_data$YearRemodAdd=q2_data$YearRemodAdd-2000
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,1])) + geom_point()+
+    geom_smooth(method="lm", formula=y~x, colour = "blue")+
+    ylab(names(q2_data)[1])+xlab("Price")->p2_1
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,2])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[2])+xlab("Price")->p2_2
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,3])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[3])+xlab("Price")->p2_3
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,4])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[4])+xlab("Price")->p2_4
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,5])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[5])+xlab("Price")->p2_5
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,6])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[6])+xlab("Price")->p2_6
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,7])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[7])+xlab("Price")->p2_7
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,8])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[8])+xlab("Price")->p2_8
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,9])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[9])+xlab("Price")->p2_9
+
+q2_data %>%  ggplot( aes(x = SalePrice, y =.[,10])) + geom_point()+
+  geom_smooth(method="lm", formula=y~x, colour = "blue")+
+  ylab(names(q2_data)[10])+xlab("Price")->p2_10
+
+grid.arrange(p2_1, p2_2, p2_3, p2_4,p2_5, p2_6, p2_7, p2_8, p2_9, p2_10, ncol=3)
+
+```
+
+***
+
+<p dir="RTL">
+۳. یک مدل خطی بر اساس ده متغیر برای پیش بینی قیمت برازش دهید. و سپس خلاصه نتایج مدل را به دست آورید.
+</p>
+
+```{r}
+fit_ = lm(SalePrice ~ OverallQual+GrLivArea+GarageCars+GarageArea+TotalBsmtSF+
+           FullBath+TotRmsAbvGrd+ageHome+YearRemodAdd, data = q2_data)
+summary(fit_)
+
+```
+
+***
+
+<p dir="RTL">
+۴. نمودار قیمت واقعی و قیمت پیش بینی را رسم نمایید و خوب بودن مدل را ارزیابی کنید.
+</p>
+
+<p dir="RTL">
+هر چه داده ها به خط قرمز که ۴۵ درجه شیب دارند نزدیک باشند بهتر پیش بینی شده اند. هرچه خط سبز به خط قرمز نزدیک تر باشد نشان میدهد که پیش بینی به طور کلی بهتر بوده است.
+</p>
+```{r}
+q2_data$priceGuess=predict(fit_, q2_data)
+
+
+
+p <- ggplot() +
+  # blue plot
+  geom_point(data=q2_data, aes(x = SalePrice, y =priceGuess)) + 
+  geom_smooth(data=q2_data, aes(x = SalePrice, y =priceGuess), fill="green",
+              colour="darkblue", size=1)+ 
+  geom_smooth(data=q2_data, aes(x = SalePrice, y =SalePrice), fill="red",
+              colour="red", size=1)+ 
+  ylab("predicted price")+xlab("Real Price")+ggtitle("Q4")
+
+p
+```
+
+***
+
+<p dir="RTL">
+۵. مقدار
+R-squared
+ مدل را به دست آورید. آیا بر اساس این کمیت مدل به خوبی به داده ها برازش داده شده است؟
+ کمیت
+ F-statistic
+ را در خلاصه مدل تفسیر نمایید.
+</p>
+<p dir="RTL">
+هر چه R2 به یک نزدیک تر باشد نشان می دهد که مدل خطی بهتر عمل کرده است. ۰.۷۷ هم مقدار نسبتا خوبی است. F-statistic فرض صفرش ، صفر بودن تمامی ضرایب است. یعنی در فرض صفر هیچ یک از متغیر ها تاثیری در قیمت ندارند. هرچه مقدار F-statistic  بیشتر باشد نشان میدهد تاثیر بیشتر بوده است. F-statistic در اینجا مقدار خوبی دارد.
+</p>
+The computed F-statistic suggests that the r-square produced by the model is statistically significant at alpha = 0.01. 
+```{r}
+summary(fit_)
+
+```
+
+***
+
+<p dir="RTL">
+۶. بر اساس
+p-value
+ سطح معناداری ضرایب تصمیم بگیرید که چه متغیرهایی در مدل سازی استفاده شود.
+بر اساس متغیرهای جدید دوباره مدل سازی کنید و نتایج رو گزارش دهید.
+</p>
+<p dir="RTL">
+
+میزان R2 کمی کمتر شده. کاهش R2 بسیار کم است که نشان میدهد متغیر های حذف شده تاثیر کمی داشته اند.F-statistic  افزایش یافته، که نشان میدهد این بار متغیر های انتخاب شده به طور متوسط تاثیر بیشتری روی قیمت دارند.
+
+مدل سازی کمی ساده تر شده ولی نتایج تغییرات خاصی در نمودار و نتایج دیده نمی شود.
+</p>
+
+```{r}
+
+# Q6
+
+q6_data=q2_data
+
+fit_6 = lm(SalePrice ~ OverallQual+GrLivArea+GarageCars+TotalBsmtSF+
+            ageHome+YearRemodAdd, data = q6_data)
+summary(fit_6)
+
+q6_data$priceGuess=predict(fit_6, q6_data)
+
+#R-squared
+R2_6 <- 1 - (sum((q6_data$SalePrice-q6_data$priceGuess )^2)/sum((q6_data$SalePrice-mean(q6_data$SalePrice))^2))
+#RMSE
+my_RMSE_6<-sqrt(mean((q6_data$priceGuess -q6_data$SalePrice)^2))
+
+p6 <- ggplot() +
+  # blue plot
+  geom_point(data=q6_data, aes(x = SalePrice, y =priceGuess)) + 
+  geom_smooth(data=q6_data, aes(x = SalePrice, y =priceGuess), fill="green",
+              colour="darkblue", size=1)+ 
+  geom_smooth(data=q6_data, aes(x = SalePrice, y =SalePrice), fill="red",
+              colour="red", size=1)+ 
+  ylab("predicted price")+xlab("Real Price")+ggtitle("Q6")
+
+p6
+
+```
+
+***
+
+<p dir="RTL">
+۷. مدل خود را بر اساس باقی مانده نقص یابی کنید.
+سه محک 
+normality, independance, Constant Variance
+ را در نقص یابی خود در نظر بگیرید.
+</p>
+
+Normality of residuals: 
+
+The qqnorm() plot in top-right evaluates this assumption. If points lie exactly on the line, it is perfectly normal distribution.  However, some deviation is to be expected, particularly near the ends. I believe we can say the residuals has a normal distribution here.
+
+```{r}
+#Normality of residuals
+par(mfrow=c(2,2)) 
+plot(fit_6)
+```
+
+
+Constant Variance: 
+
+(Homoscedasticity of residuals or equal variance)
+
+From the first plot (top-left), as the fitted values along x increase, the residuals decrease and then increase. This pattern is indicated by the red line, which should be approximately flat if the disturbances are homoscedastic.In this question, there is a definite pattern noticed. So, there is heteroscedasticity. 
+
+
+
+
+independance:
+
+When the residuals are autocorrelated, it means that the current value is dependent of the previous (historic) values and that there is a definite unexplained pattern in the Y variable that shows up in the disturbances. 
+In the first method, If the residuals are autocorrelated, the correlation (Y-axis) from the immediate next line onwards will be above the dashed blue line (significance level), so the plot indicate that the residuals are not correlated.
+In the second method, With a p-value > 0.05 , we cannot reject the null hypothesis which means there is not a definite pattern in the residuals.
+
+
+```{r}
+# method 1
+acf(fit_6$residuals)
+# method 2
+lawstat::runs.test(fit_6$residuals)
+```
+
+
+ 
+***
+
+<p dir="RTL">
+۸. داده ها را به پنج قسمت تقسیم کنید. بر اساس چهار قسمت مدل خطی را بسازید و صحت مدل را برای یک قسمت 
+باقی مانده را تست کنید. خطای پیش بینی شما چقدر است؟
+</p>
+
+<p dir="RTL"> 
+در این حالت چون داده های تست در فرایند پیدا کردن ضرایب نقش نداشته اند، R2  و mean squre نشان می دهند که خطا به نسبت قسمت ۶ افزایش یافته است.
+</p>
+
+```{r}
+
+# Q8
+length=dim(h1)[1]*0.8
+train_8=h1[1:length,]
+test_8=h1[(length+1):dim(h1)[1],]
+  
+fit_8 = lm(SalePrice ~ OverallQual+GrLivArea+GarageCars+TotalBsmtSF+
+             ageHome+YearRemodAdd, data = train_8)
+summary(fit_8)
+
+test_8$priceGuess=predict(fit_8, test_8)
+
+#R-squared
+R2 <- 1 - (sum((test_8$SalePrice-test_8$priceGuess )^2)/sum((test_8$SalePrice-mean(test_8$SalePrice))^2))
+R2
+#RMSE
+my_RMSE<-sqrt(mean((test_8$priceGuess -test_8$SalePrice)^2))
+my_RMSE
+
+```
+
+***
+
+<p dir="RTL"> 
+۹. آیا قیمت ربط غیر خطی با یکی از ده متغیر استفاده شده دارد؟
+بر اساس دستاوردهای خود مدل را بهتر نمایید.
+</p>
+
+<p dir="RTL"> 
+وقتی ضرایب رابطه ی غیر خطی را پیدا میکنیم و قیمت خانه ها را پیش یبینی میکنیم بر اساس R2 و mean Square واضح  است که خطا به نسبت قسمت ۶ کاهش یافته است.
+</p>
+
+
+```{r}
+# Q9
+
+fit_9 = lm(SalePrice ~ OverallQual*GrLivArea*GarageCars*TotalBsmtSF*ageHome*YearRemodAdd, data = q6_data)
+summary(fit_9)
+q9_data=q6_data
+q9_data$priceGuess=predict(fit_9, q9_data)
+
+#R-squared
+R2_9 <- 1 - (sum((q9_data$SalePrice-q9_data$priceGuess )^2)/sum((q9_data$SalePrice-mean(q9_data$SalePrice))^2))
+#RMSE
+my_RMSE_9<-sqrt(mean((q9_data$priceGuess -q9_data$SalePrice)^2))
+
+
+##
+R2_6
+R2_9
+
+my_RMSE_6
+my_RMSE_9
+##
+
+```
+
+
+***
+
+<p dir="RTL"> 
+۱۰. بر اساس مدل نهایی به دست آمده نتایج پیش بینی خود را بر روی
+test.csv
+به دست آورید و در سایت 
+kaggle
+ در مسابقه 
+ House Prices: Advanced Regression Techniques
+بارگذاری نمایید. سپس لینک رتبه و عدد آن را ضمیمه تمرین کنید.
+</p>
+
+```{r}
+
+test=read_csv("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_6/house/test.csv")
+test_data=test%>%mutate(ageHome=2018-YearBuilt)%>%select( OverallQual,GrLivArea,GarageCars,TotalBsmtSF,ageHome,YearRemodAdd,Id)
+test$priceGuess=predict(fit_9, test_data)
+
+test10=test%>%select(Id,SalePrice=priceGuess)
+
+na_replace=mean(test10$SalePrice,na.rm = T)
+test10$SalePrice[661]=na_replace
+test10$SalePrice[1117]=na_replace
+#write_csv(test10,"/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_6/house/testResult.csv")
+
+```
+
+<div align="center">
+<img  src="res.png"  align = 'center'>
+</div>
+
+
+

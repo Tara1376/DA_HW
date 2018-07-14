@@ -1,0 +1,133 @@
+---
+title: "Report HW5"
+author: "Tara Boroushaki 93105501"
+date: "15 March 2018"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+```{r,include=FALSE}
+library(dplyr)
+library(highcharter)
+library(readr)
+```
+
+1. chi-Squared test with uniform distributaion is used. Since p-value is small, the H0 is rejected. which means different Stores did not have similar sale. 
+
+```{r}
+prob = c(1/8,1/8,1/8,1/8,1/8,1/8,1/8,1/8)
+chisq.test(c(102, 300, 102, 100, 205, 105, 71 , 92), p = prob)
+
+```
+
+2. permutation test is used to compare means of two stores. Since p-value is not smaller than 0.05, the H0 is not rejected, which means we cannot say that different Stores have different sales.
+
+```{r}
+mydata = data.frame(sells = c(50, 50, 60, 70, 75, 80, 90, 85,55, 75, 80, 90, 105, 65),
+                    Store = factor(c(rep("Classical",8), rep("Modern",6))))
+coin::oneway_test(sells~Store, data=mydata, distribution="exact")
+t.test(sells~Store, data=mydata, var.equal=TRUE)
+hchart(density(c(50, 50, 60, 70, 75, 80, 90, 85)), type = "area",name="Classical") %>% 
+  hc_add_series(density(c(55, 75, 80, 90, 105, 65)), type = "area",name="Modern")
+
+```
+
+3. Paired Wilcoxon signed-rank test is used. Since p-value is not smaller than 0.05, the H0 is not rejected, which means we cannot say that costumers' trends have changed after new method of advertising. The plot also indicates there is not a significant difference between two methods. t.test also confirm the conclusion.
+
+```{r}
+oldMethod = c(509, 517, 502, 629, 830, 911, 847, 803, 727, 853, 757, 730, 774, 718, 904)
+newMethod = c(517, 508, 523, 730, 821, 940, 818, 821, 842, 842, 709, 688, 787, 780, 901)
+wilcox.test(oldMethod, newMethod)
+t.test(oldMethod, newMethod)
+hchart(density(oldMethod), type = "area",name="Old Method") %>% 
+  hc_add_series(density(newMethod), type = "area",name="New Method")
+
+```
+
+4. Kruskal-Wallis rank test is used to compare means of two stores. Since p-value is not smaller than 0.05, the H0 is not rejected. which means we cannot say that different colors, are sold differently. for example the plot shows that blue and red products have similar trends. AOV also confirms the conclusion.
+
+
+```{r}
+
+data4  = data.frame(sells = c(510, 925,  730,720, 735,  745,930, 753,  875,754, 685,  610,105),
+                    color=as.factor(c("w","b","r","w","b","r","w","b","r","w","b","r","w")))
+
+kruskal.test(sells~color,data=data4)
+aov(sells~color,data=data4)->f
+summary(f)
+data4 %>% group_by(color) %>% summarise(meanSell=mean(sells))
+data4 %>% filter(color=="w") %>% select(sells) -> dw
+data4 %>% filter(color=="b") %>% select(sells) -> db
+data4 %>% filter(color=="r") %>% select(sells) -> dr
+hchart(density(as.matrix(dw)), type = "area",name="white") %>% 
+  hc_add_series(density(as.matrix(db)), type = "area",name="blue") %>% 
+  hc_add_series(density(as.matrix(dr)), type = "area",name="red")
+
+```
+
+
+5. Friedman test is used to compare months and the results shows that the advertising have not changed the costumers' attitude. The first and the last months were compared by both friedman and wilcox test. They also confirm the conclusion.
+The plot also shows the trend has not changed.
+
+```{r}
+
+TV=read_csv("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_5/hw_05/data/tv.csv")
+friedman.test(as.matrix(TV))
+TV%>%select(March,Jun)->TV2
+friedman.test(as.matrix(TV2))
+data5=as.matrix(TV)
+wilcox.test(data5[,1],data5[,4], paired = T, alternative = "less")
+
+hchart(density(TV$March), type = "area",name="March") %>% 
+  hc_add_series(density(as.matrix(TV$April)), type = "area",name="April") %>% 
+  hc_add_series(density(as.matrix(TV$May)), type = "area",name="May") %>% 
+  hc_add_series(density(as.matrix(TV$Jun)), type = "area",name="June")
+
+#If only x is given, or if both x and y are given and paired is TRUE, 
+#a Wilcoxon signed rank test of the null that the distribution of x 
+#(in the one sample case) or of x - y (in the paired two sample case)
+#is symmetric about mu is performed.
+#Otherwise, if both x and y are given and paired is FALSE, a Wilcoxon 
+#rank sum test (equivalent to the Mann-Whitney test: see the Note) is
+#carried out. In this case, the null hypothesis is that the distributions
+#of x and y differ by a location shift of mu and the alternative is that
+#they differ by some other location shift (and the one-sided alternative
+#"greater" is that x is shifted to the right of y).
+
+```
+
+
+6. chi-Squared test of independence is used. Since p-value is smaller than 0.05, the H0 is rejected. which means the population of city is important.
+
+```{r}
+data6=data.frame(Always=c(151,802,753),Sometimes=c(252,603,55),Never=c(603,405,408))
+rownames(data6)=c("small","medium","large")
+chisq.test(data6)
+```
+
+7. To see whether there is a relation between product A and B, correlation tests of spearman and kendall are used. These tests may be used if the data do not necessarily come from a bivariate normal distribution. Since p-value is not smaller than 0.05, the H0 is not rejected. which means we cannot say that A has an influence on B.
+
+```{r}
+consumption=read_csv("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_5/hw_05/data/consumption.csv")
+cor.test(formula = ~ A + B, data = consumption,method="kendall")
+cor.test(formula = ~ A + B, data = consumption,method="spearman")
+# method is "kendall" or "spearman".These tests may be used if the data do not necessarily come from a bivariate normal distribution.
+
+```
+
+
+
+8. chi-Squared test is used. Since p-value is smaller than 0.05, the H0 is rejected, which means the gender has an influence on importance of different aspects of products. 
+
+```{r}
+data8=data.frame(male=c(301,353,558),female=c(502,155,153))
+rownames(data8)=c("price","design","color")
+chisq.test(data8)
+```
+
+
+
+
+
+
