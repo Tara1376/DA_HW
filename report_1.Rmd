@@ -1,0 +1,400 @@
+---
+title: "first week: Introduction to R and Rstudio"
+author: "Tara Boroushaki 93105501"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+<div align="center">
+
+</div>
+
+
+<h1 dir="RTL"> 
+تمرین سری اول: چند مساله
+</h1>
+
+<p dir="RTL"> 
+به سوال های زیر را از طریق نوشتن یک کد پاسخ دهید.
+</p>
+
+
+
+***
+
+<h2 dir="RTL">
+ماتریس دوستانه
+</h2>
+
+<p dir="RTL">
+یک ماتریس
+$(n,n)$
+که شامل اعداد 
+$1,2,...,n^2$
+است. دوستانه نامیده میشود اگر مجموع سطرها با مجموع ستون های آن برابر شوند. مثال هایی از ماتریس های دوستانه از بعد ۴و۵و۶ ارایه دهید. 
+</p>
+
+<h3 dir="RTL">
+پاسخ:
+</h3>
+
+<p dir="RTL">
+با استفاده از پکیج magic میتوان ماتریس های خواسته شده را تولید کرد.
+چون روی قطر ها قیدی نداریم میتوان ترتیب ستون هاویا سطر ها را تغییر دهیم و همچنان ماتریسی جادویی داشته باشیم.
+</p>
+
+
+````{r,echo=TRUE}
+library(magic)
+print(" dim=4 ")
+a <- magic(4)
+print(a)
+print(" dim=5 ")
+b <- magic(5)
+print(b)
+print(" dim=6 ")
+c <- magic(6)
+print(c)
+````
+<p dir="RTL">
+
+</p>
+
+***
+
+<h2 dir="RTL">
+جایشگت  عجیب
+</h2>
+
+<p dir="RTL">
+جایگشت هایی از اعداد ۱ تا ۱۳ را پیدا کنید که در شرایط زیر صدق کنند:
+</p>
+
+$$ a = (a_1, a_2,..., a_{13})$$
+$$\frac{a_1}{a_2+a_3} = \frac{a_2+a_3}{a_3+a_4+a_5}<1$$
+$$\frac{a_6}{a_6+a_7}= \frac{a_6+a_7}{a_7+a_8+a_9} = \frac{a_7+a_8+a_9}{a_5+a_9+a_{10}} <1$$
+
+$$\frac{a_{11}+a_{12}}{a_{12}+a_{13}}=\frac{a_{12}+a_{13}}{a_{13}+a_{10}}<1$$
+<h3 dir="RTL">
+پاسخ:
+</h3>
+
+<p dir="RTL">
+این سوال به دو روش حل شده است.
+روش بهتر:
+
+ابتدا به وسیله الگوریتم heap تمامی جایگشت های ممکن را توللید میکنیم
+
+بعد از یافتن اولین پاسخی که در شرایط صدق کند الگوریتم متوقف میشود
+
+</p>
+
+````{r , echo=TRUE}
+
+A = 1:13
+n = 13
+c =rep( 1,13)
+i = 1;
+# pseudocode available at  en.wikipedia.org/wiki/Heap's_algorithm
+while (i < n+1){
+  if  (c[i] < i){   #if  c[i] < i then
+    if (i%%2 == 1){ #if i is even then SWAP(A[0], A[i])
+      temp_=A[i]
+      A[i]=A[1]
+      A[1]=temp_
+      }
+    else{ #swap(A[c[i]], A[i])
+      temp_=A[i]
+      A[i]=A[c[i]]
+      A[c[i]]=temp_
+    }
+    
+    if (A[1]/(A[2]+A[3]) == (A[2]+A[3])/(A[3]+A[4]+A[5]) &    #check if it is the right sequence 
+        A[1]/(A[2]+A[3]) <1 &
+        A[6]/(A[6]+A[7]) == (A[6]+A[7])/(A[7]+A[8]+A[9]) &
+        A[6]/(A[6]+A[7]) == (A[7]+A[8]+A[9])/(A[5]+A[9]+A[10]) &
+        A[6]/(A[6]+A[7]) < 1 &
+        (A[11]+A[12])/(A[12]+A[13]) == (A[12]+A[13])/(A[13]+A[10]) &
+        (A[11]+A[12])/(A[12]+A[13]) < 1)
+      break
+            # stop searching if the answer is found
+    
+    c[i] = c[i] + 1
+    i = 1}
+  else{
+    c[i] = 1
+    i = i + 1
+  }
+}
+print("Answer:")
+print(A)
+````
+
+<p dir="RTL">
+روش دوم :
+ به صورت رندوم در تمامی ۱۳! حالت به دنبال جوابی بگردیم که در شرایط گفته شده صدق کند.
+ این روش زمانبر تر بود. ولی جواب یکسانی داد.
+
+</p>
+
+````
+i=0
+while(TRUE){
+  
+  #i=i+1
+  x=sample.int(13, size = 13, replace = FALSE, prob = NULL)
+  #print(i)
+  if (x[11]>x[13] | x[12]>x[10] | x[2]>x[4]+x[5] | x[1]>x[2]+x[3] | x[6]>x[8]+x[9] | x[7]+x[8]>x[5]+x[10])
+    next
+  if ((x[1]/(x[2]+x[3]))!=((x[2]+x[3])/(x[3]+x[4]+x[5])))
+      next
+  if ((x[6]/(x[6]+x[7]))!=((x[6]+x[7])/(x[7]+x[8]+x[9])) | (x[6]/(x[6]+x[7]))!=((x[7]+x[8]+x[9])/(x[5]+x[9]+x[10])))
+    next
+  if (((x[11]+x[12])/(x[12]+x[13]))!=((x[12]+x[13])/(x[13]+x[10])))
+    next
+  print(x)
+  break
+  
+}
+
+````
+
+***
+
+<h2 dir="RTL">
+مچ گیری
+</h2>
+
+<p dir="RTL">
+میزگردی شامل ۱۶ فرد دروغگو و راستگو تشکیل شده است. هر کسی ادعا میکند دو فرد کنار دستی او دروغگو هستند. چند نفر دروغگو در جمع وجود دارد؟
+</p>
+
+<p dir="RTL">
+میزگرد دیگری شامل ۱۲ نفر فرد راستگو و دروغگو تشکیل شده به طوری که هر فرد ادعا میکند از میان دو نفر کنار دستی یک نفر راستگو و یک نفر دروغگو هستند. چند نفر دروغگو در جمع وجود دارد؟
+</p>
+
+<p dir="RTL">
+این دفعه میزگردی هشت نفره تشکیل شده به گونه ایی که چهار نفر ادعا میکنند از از میان دو نفر کنار دستی یکی دروغگو و دیگری راستگوست و چهار نفر دیگر اعلام میکنند که هر دو فرد کنار دستی آنها دروغگو هستند. چند نفر دروغگو در میان جمع است؟
+</p>
+
+
+<h3 dir="RTL">
+پاسخ:
+</h3>
+
+<p dir="RTL">
+قسمت اول:
+
+تمامی اعداد 0 تا 2^16  را به صورت باینری در آورده و تمامی حالات ممکن را به این وسیله چک میکنیم.
+ارقام ۱ را مساوی راستگو و ارقام ۰ را دروغگو در نظر میگیریم.
+با توجه به ادعای دروغگو بودن دو فرد کناردستی، ۴ حالت غیر مجاز وجود دارد. چک میکنیم که اگر در رشته ای از ۰ و ۱ ها این ترکیب های غیرمجاز نبود، آن را و تعداد راستگو های آن را ذخیره میکنیم.
+</p>
+<p dir="RTL">
+ چون میز گرد است تعدادی از حالات شمرده تکراری هستند ولی این در تعداد دروغگو ها یا راستگو های ممکن تاثیری ندارد. بعد از اجرای کد تعداد راستگو ها ۶،۷، یا ۸ میتواند باشد که یعنی تعداد دروغگو ها ۱۰ یا ۹ یا ۸ میتواند باشد.
+</p>
+````{r , echo=TRUE}
+
+library(binaryLogic)
+i=1
+n=16
+Answer1=NULL
+Answer2=NULL
+t=FALSE
+## 1 G
+while(i<(2^n)){
+  x=as.binary(i, signed=FALSE, littleEndian=FALSE, size=2, n=16, logic=FALSE)
+  y=as.character(x)
+  for(j in 1:(n-2)){
+    
+    a=y[j:(j+2)]
+    b=paste(a, sep="", collapse="")
+    if (b=="000" || b=="110" || b=="111" || b=="011")
+      { t=TRUE
+        break}
+    
+  }
+  if(!t){
+    
+    a=c(y[n],y[1:2])
+    b=paste(a, sep="", collapse="")
+    if (b=="000" || b=="110" || b=="111" || b=="011")
+      t=TRUE
+    
+    a=c(y[(n-1):n],y[1])
+    b=paste(a, sep="", collapse="")
+    if (b=="000" || b=="110" || b=="111" || b=="011")
+       t=TRUE
+    
+  }
+  
+  if(!t){ #add it
+    Answer1=c(Answer1,as.integer(x))
+    Answer2=c(Answer2,sum(as.integer(y)))
+  }
+  
+  t=FALSE
+  i=i+1
+}
+
+for (i in c(6,7,90))
+{
+  print(as.binary(Answer1[i], signed=FALSE, littleEndian=FALSE, size=2, n=16, logic=FALSE))
+  print("Number of liers:")
+  print(16-Answer2[i])
+}
+
+````
+
+
+<p dir="RTL">
+قسمت دوم:
+در این حالت رشته های باینری ۱۲ رقمی تولید میکنیم. ادعا در این قسمت متفاوت است پس رشته های غیرمجاز این قسمت متفاوت اند.
+</p>
+
+
+```{r,echo=TRUE}
+library(binaryLogic)
+i=0
+n=12
+Answer1=NULL
+Answer2=NULL
+t=FALSE
+## 1 G
+while(i<(2^n)){
+  x=as.binary(i, signed=FALSE, littleEndian=FALSE, size=2, n=12, logic=FALSE)
+  y=as.character(x)
+  for(j in 1:(n-2)){
+    
+    a=y[j:(j+2)]
+    b=paste(a, sep="", collapse="")
+    if (b=="010" || b=="001" || b=="111" )
+    { t=TRUE
+    break}
+    
+  }
+  if(!t){
+    
+    a=c(y[n],y[1:2])
+    b=paste(a, sep="", collapse="")
+    if (b=="010" || b=="001" || b=="111" )
+      t=TRUE
+    
+    a=c(y[(n-1):n],y[1])
+    b=paste(a, sep="", collapse="")
+    if (b=="010" || b=="001" || b=="111" )
+      t=TRUE
+    
+  }
+  
+  if(!t){ #add it
+    Answer1=c(Answer1,as.integer(x))
+    Answer2=c(Answer2,sum(as.integer(y)))
+  }
+  
+  t=FALSE
+  i=i+1
+}
+
+print ("Answers:")
+
+for (i in 1:2){
+  print(as.binary(Answer1[i], signed=FALSE, littleEndian=FALSE, size=2, n=12, logic=FALSE))
+  print("Number of liers:")
+  print(n-Answer2[i])
+}
+
+```
+
+
+<p dir="RTL">
+قسمت سوم:
+مشابه قبل تمام رشته های باینری 8رقمی را تولید کرده و برای هر یک، هر یک از ترکیب های 4تایی از 1تا8 را در نظر گرفته و چک می کنیم برای ترکیب در نظر گرفته شده آیا اگر این 4نفر از دسته ی اول (دو نفر کنار دستی یکی دروغگو و دیگری راستگوست) باشند و  4نفر باقی مانده از دسته ی دوم (هر دو فرد کنار دستی آنها دروغگو است)  باشند، آیا رشته ای مجاز هست یا نه. رشته های مجاز و غیر مجاز مشابه دو قسمت قبلی هستند.
+
+</p>
+
+
+```{r , echo=TRUE}
+
+library(binaryLogic)
+
+combinations = combn(8,4) 
+i=0
+n=8
+Answer1=NULL
+Answer2=NULL
+t=FALSE
+## 1 G
+while(i<(2^n)){
+  
+  x=as.binary(i, signed=FALSE, littleEndian=FALSE, size=2, n=8, logic=FALSE)
+  y=as.character(x)
+  
+  for (k in 1:70){
+    
+        com=combinations[,k]
+        for (l in 1:4){
+                if (com[l]==1){
+                  a=c(y[n],y[1:2])
+                  }
+                else if(com[l]==n){
+                  a=c(y[(com[l]-1):com[l]],y[1])
+                  }
+                else{
+                  a=c(y[com[l]-1],y[com[l]],y[com[l]+1])
+                }
+              b=paste(a, sep="", collapse="")
+              if (b=="010" || b=="001" || b=="111" )
+                  {t=TRUE
+                  break}
+        }
+        
+        com=combinations[,71-k]
+        for (l in 1:4){
+                if (t)
+                  break
+                if (com[l]==1){
+                  a=c(y[n],y[1:2])
+                }
+                else if(com[l]==n){
+                  a=c(y[(com[l]-1):com[l]],y[1])
+                }
+                else{
+                  a=c(y[com[l]-1],y[com[l]],y[com[l]+1])
+                }
+                b=paste(a, sep="", collapse="")
+                if (b=="000" || b=="110" || b=="111" || b=="011")
+                    {t=TRUE
+                    break}
+            
+        }
+        
+        if(!t){ #add it
+              Answer1=c(Answer1,as.integer(x))
+              Answer2=c(Answer2,sum(as.integer(y)))
+              break
+        }
+        
+        
+    
+  }
+  
+  t=FALSE
+  i=i+1
+}
+
+print ("Answers:")
+
+for (i in 1:length(Answer1)){
+  print(as.binary(Answer1[i], signed=FALSE, littleEndian=FALSE, size=2, n=12, logic=FALSE))
+  print("Number of liers:")
+  print(n-Answer2[i])
+}
+
+```
+
+
+
+

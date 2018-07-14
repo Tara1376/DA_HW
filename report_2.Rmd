@@ -1,0 +1,407 @@
+---
+title: "second week: Introduction to R and Rstudio"
+subtitle: "Mobile Data"
+author: "Tara Boroushaki 93105501"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+<div align="center">
+
+</div>
+
+<h1 dir="RTL"> 
+تمرین سری دوم: تلفن همراه شناسی!
+</h1>
+
+> <p dir="RTL"> 
+ با استفاده از داده های گوشی های همراه به سوالات زیر پاسخ دهید. 
+برای رسم نمودار از پکیج 
+ggplot2
+استفاده کنید.
+</p>
+
+```{r setup, include=FALSE}
+library("ggplot2")
+library(dplyr)
+library(readr)
+library("data.table", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library(gridExtra)
+library(grid)
+```
+```{r}
+mobile = read_csv("/Users/Apple/Documents/TaraFiles/University/term 8/Data Analysis/week_2/mobile_data.csv")
+# handling overPriced objects :)
+mobile$price[which(mobile$price>5000)]=mobile$price[which(mobile$price>5000)]/10
+mobile$price[which(mobile$price>5000)]=mobile$price[which(mobile$price>5000)]/2
+
+```
+
+***
+
+<p dir="RTL">
+۱. کدام شرکت بیشترین تعداد گوشی را تولید کرده است؟
+نمودار ستونی ۲۰ شرکت برتر بر حسب تعداد گوشی تولید کرده را رسم کنید.
+</p>
+
+```{r}
+# 1
+
+mobile %>%   
+  group_by(company) %>%
+  summarise(number = length(company)) -> stat1
+stat1=stat1[order(stat1$number,decreasing = TRUE),]
+stat1_1=stat1[1:20,]
+p1=ggplot(stat1_1,aes(x=company,y=number))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("company")+ylab("number")+ggtitle("Q1")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p1
+
+writeLines(as.character(cat(as.character(stat1_1[1,1])," has produced more cellphones")), con = stdout(), sep = "\n", useBytes = FALSE)
+
+
+```
+
+***
+<p dir="RTL">
+۲. نمودار زمانی طول عرض  ضخامت و کیفیت دوربین گوشی ها را بکشید
+ و به نمودار هر یک مدل خطی اضافه کنید.
+</p>
+```{r}
+# 2
+
+p2_1 = ggplot(data = mobile, aes(x = year, y = dim_length,na.rm=T))
+coef = coef(lm(dim_length ~ year, data = mobile))
+p2_1=p2_1 + geom_point(color="blue",alpha=0.5) + geom_abline(intercept = coef[1], slope = coef[2])+xlab("year")+ylab("length")+ggtitle("Q2_1")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p2_1
+
+p2_2 = ggplot(data = mobile, aes(x = year, y = dim_breadth,na.rm=T))
+coef = coef(lm(dim_breadth ~ year, data = mobile))
+p2_2=p2_2 + geom_point(color="blue",alpha=0.5) + geom_abline(intercept = coef[1], slope = coef[2])+xlab("year")+ylab("breadth")+ggtitle("Q2_2")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p2_2
+
+p2_3 = ggplot(data = mobile, aes(x = year, y = dim_thickness,na.rm=T))
+coef = coef(lm(dim_thickness ~ year, data = mobile))
+p2_3=p2_3 + geom_point(color="blue",alpha=0.5) + geom_abline(intercept = coef[1], slope = coef[2])+xlab("year")+ylab("thickness")+ggtitle("Q2_3")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p2_3
+
+p2_4 = ggplot(data = mobile, aes(x = year, y = cam_px,na.rm=T))
+coef = coef(lm(cam_px ~ year, data = mobile))
+p2_4=p2_4 + geom_point(color="blue",alpha=0.5) + geom_abline(intercept = coef[1], slope = coef[2])+xlab("year")+ylab("camera pixel")+ggtitle("Q2_4")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p2_4
+
+
+```
+
+***
+
+<p dir="RTL">
+۳. نمودار ستونی متوسط قیمت گوشی بر حسب تعداد سیم کارت و دسترسی به 
+LTE
+را رسم نمایید.
+</p>
+```{r}
+# 3
+
+mobile %>%   
+  group_by(sim_no,LTE) %>%
+  summarise(price = mean(price,na.rm=T)) -> stat3
+
+p3=ggplot(stat3,aes(x=sim_no,y=price))+geom_bar(aes(fill = LTE),stat = "identity",position = "dodge",linetype = "dashed",color = "red",alpha=0.5)+
+  xlab("num sim")+ylab("mean price")+ggtitle("Q3")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p3
+
+
+```
+
+***
+
+<p dir="RTL">
+۴. نمودار جعبه ایی ضحامت گوشی هایی که در سال ۲۰۱۷ معرفی شده اند را برحسب اینکه کمیت جک هدفون رسم نمایید
+</p>
+```{r}
+# 4
+data=mobile[mobile$year==2017,]
+data<- na.omit(data)
+p4=ggplot(data,aes(x=audio_jack,y=dim_thickness,na.rm=T))+
+  geom_boxplot(linetype = "longdash",color = "red",fill = "pink",alpha=0.8)+
+  xlab("Audio Jack")+ylab("thickness")+ggtitle("Q4 (in 2017)")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p4
+
+
+```
+
+***
+
+<p dir="RTL">
+۵. مفهوم 
+ppi 
+را در گوشی های موبایل محاسبه و هیستوگرام آن را رسم نمایید.
+همچنین نمودار سالانه متوسط این کمیت را بکشید.
+کدام گوشی بیشترین
+ppi
+را دارد؟
+</p>
+
+$ppi={\sqrt(pixelColumn^2 + pixelRow^2)}/{displaySize} $
+
+```{r}
+#5
+
+
+a=sqrt(mobile$px_col^2+mobile$px_row^2)/mobile$display_size
+p5=ggplot(as.data.frame(a),aes(a,na.rm=T))+
+  geom_histogram(binwidth = 50,linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("PPI")+ylab("count")+ggtitle("Q5")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p5
+
+mobile$PPI=a
+mobile %>%   
+  group_by(year) %>%
+  summarise(meanPPI = mean(PPI,na.rm=T)) -> stat5
+coef = coef(lm(meanPPI ~ year, data = stat5))
+p5=ggplot(stat5,aes(x=year,y=meanPPI))+
+  geom_point(color = "red",alpha=0.5)+
+  geom_abline(intercept = coef[1], slope = coef[2])+
+  xlab("year")+ylab("mean PPI")+ggtitle("Q5")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p5
+
+
+writeLines(as.character(cat(as.character(mobile[which.max(mobile$PPI),"device"])," has the largest PPI")), con = stdout(), sep = "\n", useBytes = FALSE)
+writeLines(as.character(cat("PPI= ",max(mobile$PPI,na.rm=T))), con = stdout(), sep = "\n", useBytes = FALSE)
+
+```
+
+***
+
+<p dir="RTL">
+۶. در گذشته به بعضی از مدل های گوشی نوکیا 
+**گوشکوب**
+گفته می شد. سعی کنید برای این مفهوم کمیتی مناسب تعریف کنید .
+ ده گوشکوب برتر را پیدا کرده و نمودار گوشکوبیت آن را رسم نمایید.
+</p>
+
+<p dir="RTL">
+ گوشی های با قطر بیشتر از ۳۰ میلی متر و وزن بیشتر از ۹۰ گرم را گوشکوب نامیده و شاخص گوشکوبیت را به صورت زیر تعریف میکنیم.
+</p>
+$\sqrt(Thickness^{2} + weight^{2})$
+
+```{r}
+# 6
+data6=mobile[which( (mobile$dim_thickness>30) & (mobile$weight>90) ),]
+data6$gooshKoob=sqrt(data6$dim_thickness^2+data6$weight^2)
+data6=data6[order(data6$gooshKoob,decreasing = TRUE),]
+p6=ggplot(data6,aes(x=device,y=gooshKoob))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("device")+ylab("gooshKoobiat")+ggtitle("Q6")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p6
+```
+
+***
+
+<p dir="RTL">
+۷. آیا تلفن همراهی وجود دارد که در آب غرق نشود؟
+اگر جواب بله هست تمام گوشی های که این خاصیت را دارند بیابید.
+با کشیدن یک نمودار به این سوال پاسخ دهید.
+</p>
+<p dir="RTL">
+گوشی هایی که زیر خط قرار گرفته اند روی آب میمانند، که تقریبا ۱۰۰۰ تا هستند.
+</p>
+```{r}
+# 7
+
+a=1000*mobile$weight/(mobile$dim_thickness*mobile$dim_breadth*mobile$dim_length)
+mobile$density=a
+data=mobile[which(mobile$density<1),]
+
+p7=ggplot(mobile,aes(x=year,y=density))+
+  geom_point(color = "red",alpha=0.5)+
+  geom_abline(intercept = 1, slope = 0)+
+  xlab("year")+ylab("density")+ggtitle("Q7")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p7
+
+
+```
+
+***
+
+<p dir="RTL">
+۸. نمودار پراکنش حجم ذخیره سازی باطری و وزن را رسم نمایید.
+میزان همبستگی بین این دو کمیت را محاسبه کنید.
+</p>
+
+```{r}
+# 8
+
+p8 = ggplot(data = mobile, aes(x = weight, y = battery_mah,na.rm=T))
+coef = coef(lm(battery_mah ~ weight, data = mobile))
+p8=p8 + geom_point(color="blue",alpha=0.5) + 
+  geom_abline(intercept = coef[1], slope = coef[2])+
+  xlab("weight")+ylab("battery")+ggtitle("Q8")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p8
+
+v=c(mobile$battery_mah,mobile$weight)
+Xdata=matrix(v,ncol=2)
+Xdata=as.data.frame(Xdata,col.names=c("battery_mah","weight"))
+Xdata=na.omit(Xdata)
+correlation_=cor(Xdata[,1],Xdata[,2])
+writeLines(as.character(cat("correlation ratio between weight and battery is",correlation_)),
+           con = stdout(), sep = "\n", useBytes = FALSE)
+
+
+```
+
+***
+
+<p dir="RTL">
+۹. قیمت پرچمداران یک برند خاص مثلا سامسونگ را بیابید و نمودار قیمت زمان و نام مدل را رسم نمایید.
+</p>
+<p dir="RTL">
+پرچم دار را گران ترین گوشی هر برند در آن سال در نظر گرفتم.
+برای سامسونگ به صورت زیر است:
+</p>
+```{r}
+
+# 9 Samsung
+
+q=c(mobile$company,mobile$device,mobile$year, mobile$price)
+data9=matrix(q,ncol=4)
+data9=as.data.frame(data9)
+data9=na.omit(data9)
+Data9=data9[data9[,1]=="Samsung",]
+Data9 %>%   
+  group_by(V3) %>%
+  summarise(device = V2[which.max(as.numeric(as.character(V4)))],price=max(as.numeric(as.character(V4))) ) -> stat9
+p9=ggplot(stat9,aes(x=V3,y=price))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("year")+ylab("price")+ggtitle("Q9")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p9
+
+
+```
+
+```{r}
+d <- stat9
+names(d)[1]<-paste("year")
+p9_3=grid.table(d)
+
+```
+
+
+<p dir="RTL">
+برای سونی به صورت زیر است:
+</p>
+
+```{r}
+# 9 Sony
+q=c(mobile$company,mobile$device,mobile$year, mobile$price)
+data9=matrix(q,ncol=4)
+data9=as.data.frame(data9)
+data9=na.omit(data9)
+Data9=data9[data9[,1]=="Sony",]
+Data9 %>%   
+  group_by(V3) %>%
+  summarise(device = V2[which.max(as.numeric(as.character(V4)))],price=max(as.numeric(as.character(V4))) ) -> stat9
+p9_2=ggplot(stat9,aes(x=V3,y=price))+geom_col(linetype = "dashed",color = "red",fill = "pink",alpha=0.5)+
+  xlab("year")+ylab("price")+ggtitle("Q9")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p9_2
+
+```
+
+```{r}
+d <- stat9
+names(d)[1]<-paste("year")
+p9_=grid.table(d)
+
+```
+
+***
+
+<p dir="RTL">
+۱۰. سه نمودار جالب رسم کنید و توضیح دهید چرا از نظر شما جالب است؟
+</p>
+
+<p dir="RTL">
+کوریلیشن بین کیفیت دوربین و ppi که در قسمت های قبلی محاسبه شده را به دست می آوریم.
+یک نمودار خطی هم میتوان رسم کرد.
+نتایج نشان میدهد که ۰.۷۵ ثابت کوریلیشن بین این دوکمیت است، پس شرکت های سازنده با افزایش کیفیت دوربین، کیفیت صفحه را نیز بهبود میدهند.
+</p>
+
+```{r}
+# 10_1
+a=sqrt(mobile$px_col^2+mobile$px_row^2)/mobile$display_size
+f10=c(mobile$cam_px,mobile$sel_px,a,mobile$price)
+f10data=matrix(f10,ncol=4)
+f10data=as.data.frame(f10data,col.names=c("cam_px","sel_px","PPI","price"))
+f10data=na.omit(f10data)
+correlation_10=cor(f10data[,1],f10data[,3])
+writeLines(as.character(cat("correlation ratio between cam_px and PPI is",correlation_10)),
+           con = stdout(), sep = "\n", useBytes = FALSE)
+
+p10_1 = ggplot(data = f10data, aes(x = V1, y = V3,na.rm=T))
+coef = coef(lm(V3 ~ V1, data = f10data))
+p10_1=p10_1 + geom_point(color="blue",alpha=0.5) + 
+  geom_abline(intercept = coef[1], slope = coef[2])+
+  xlab("camera pixel")+ylab("PPI")+ggtitle("Q10_1")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p10_1
+
+```
+
+
+
+
+
+<p dir="RTL">
+سهم سیستم عامل های مختلف از گوشی های معرفی شده در هر سال را با رسم نمودار نشان میدهیم.
+بر اساس نمودار مشاهده می شود که simbian که سیستم عامل گوشی های نوکیا بوده در گذشته بسیار محبوب بوده، در طول زمان تنوع سیستم عامل ها کاهش یافته
+در حال حاضر بیشتر بازار در تسخیر اندروید است و سپس ios و مایکروسافت.
+</p>
+
+
+```{r}
+
+# 10_2
+mobile %>%   
+  group_by(os_type,year) %>%
+  summarise(number = length(os_type)) -> stat10_2
+stat10_2<-na.omit(stat10_2)
+
+p10_2=ggplot(stat10_2,aes(x=year,y=number))+geom_bar(aes(fill = os_type),stat = "identity",alpha=0.75)+
+  xlab("year")+ylab("OS type")+ggtitle("Q10_2")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p10_2
+
+```
+
+
+<p dir="RTL">
+در این قسمت قدرت باتری device های تولیدی اپل و سامسونگ را مقایسه میکنیم
+مشاهده میشود در بازه ای قدرت باتری های شرکت اپل بهتر بوده. علت کاهش ناگهانی میانگین اپل در ۲۰۱۶ احتمالا به علت معرفی iwatch هاست که در دیتاست از گوشی ها جدا نشده اند.
+</p>
+
+```{r}
+
+# 10_3
+
+sam=mobile[which(mobile$company=="Samsung"),c("year","battery_mah")]
+app=mobile[which(mobile$company=="Apple"),c("year","battery_mah")]
+sam<-na.omit(sam)
+app<-na.omit(app)
+sam %>%   
+  group_by(year) %>%
+  summarise(battery = mean(battery_mah,na.rm = T),company="Samsung") -> sam1
+app %>%   
+  group_by(year) %>%
+  summarise(battery = mean(battery_mah,na.rm = T),company="Apple") -> app1
+data10_3=rbind(sam1,app1)
+
+p10_3=ggplot(data10_3,aes(x=year,y=battery))+geom_bar(aes(fill = company),position = "dodge",stat = "identity",alpha=0.75)+
+  xlab("year")+ylab("battery_mah")+ggtitle("Q10_3")+theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+p10_3
+
+
+
+```
+
